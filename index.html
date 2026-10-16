@@ -200,7 +200,7 @@ button:disabled{opacity:.5;cursor:default}
 
       <div class="step">
         <h2><span class="n">2</span>ロゴ（左右に分割）</h2>
-        <label class="check"><input type="checkbox" id="useLogo" checked> ロゴを裏に入れる</label>
+        <label class="check"><input type="checkbox" id="useLogo"> ロゴを裏に入れる</label>
         <label class="drop" id="dropLogo">
           <img id="thumbLogo" alt="">
           <span class="t"><b id="nameLogo">ロゴ</b><span>背景が透明なPNG。枠にマウスを乗せてCtrl+Vでも貼り付け可</span></span>
@@ -982,7 +982,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     logoImg = null; $('fileLogo').value = ''; $('nameLogo').textContent = 'ロゴ未選択'; $('thumbLogo').removeAttribute('src');
     status('ロゴを外しました。別のロゴを入れるときは上の枠から選んでください。'); schedule();
   });
-  $('reset').addEventListener('click', () => { $('size').value = DEF.size; $('pos').value = DEF.pos; $('shadow').value = DEF.shadow; $('useLogo').checked = true; syncOutputs(); schedule(); });
+  $('reset').addEventListener('click', () => { $('size').value = DEF.size; $('pos').value = DEF.pos; $('shadow').value = DEF.shadow; syncOutputs(); schedule(); });
 
   // 貼り付け先：最後に触った画像の枠（最初はデザイン画像）
   const pasteTargets = {}; let pasteTarget = 'dropDesign';
