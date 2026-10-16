@@ -130,6 +130,7 @@ button:disabled{opacity:.5;cursor:default}
 .ver{margin-left:10px;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid rgba(0,229,255,.5);color:#7ff3ff;white-space:nowrap}
 button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent2));color:#fff}
 .zoombtn{padding:5px 12px;font-size:12px;border-color:var(--accent3);color:var(--accent3)}
+.tiny{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -168,7 +169,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:30</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:35</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -315,6 +316,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
           <button id="dlTag" type="button">タグ画像だけ保存</button>
           <button class="primary alt" id="dlZip" type="button">まとめて保存（提出用＋デザイン画像）</button>
         </div>
+        <p class="tiny">※iPhoneのSafariは1回に1枚しか保存できないことがあります。その場合は「提出用 JPG を保存」と「デザイン画像を保存」を1つずつ押してください。</p>
         <div class="status" id="status" role="status"></div>
       </div>
     </section>
