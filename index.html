@@ -173,7 +173,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:10</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:15</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -856,13 +856,20 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
 
   // 1) デザインを縦横比に合わせてカットし、ロゴを左右分割で配置
+  const POOL = {};
+  function reuse(key, w, h){
+    let c = POOL[key]; if (!c) c = POOL[key] = document.createElement('canvas');
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } else c.getContext('2d').clearRect(0, 0, w, h);
+    const x = c.getContext('2d'); x.setTransform(1,0,0,1,0,0); x.globalCompositeOperation = 'source-over'; x.filter = 'none'; x.globalAlpha = 1;
+    return c;
+  }
   function buildDesign(){
     const src = designImg || sampleDesign();
     const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
     // 出力サイズ：フォーマットの比率（1.41:1）。元画像の解像度をなるべく保つ
     // 出力サイズ：印刷用の 3307×2347px に固定
     const cw = DW_OUT, ch = DH_OUT;
-    const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    const c = reuse('design', cw, ch);
     const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
     const fit = document.querySelector('input[name=fit]:checked').value, z = (+$('dz').value)/100;
     // 画像を入れる枠（安全範囲モードは安全範囲の中）
@@ -882,7 +889,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     if ($('useLogo').checked && logoImg) {
       const k = cw/1440, lw = Math.round(cw*(+$('size').value)/100), lh = Math.round(logoImg.height*lw/logoImg.width);
       const half = Math.floor(lw/2), y = Math.round(ch*(+$('pos').value)/100 - lh/2);
-      const L = document.createElement('canvas'); L.width = cw; L.height = ch; const lx = L.getContext('2d');
+      const L = reuse('logo', cw, ch); const lx = L.getContext('2d');
       lx.drawImage(logoImg, half/lw*logoImg.width, 0, logoImg.width-half/lw*logoImg.width, logoImg.height, 0, y, lw-half, lh); // 右半分→左端
       lx.drawImage(logoImg, 0, 0, half/lw*logoImg.width, logoImg.height, cw-half, y, half, lh);                                // 左半分→右端
       const s = (+$('shadow').value)/100;
@@ -981,7 +988,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       fx.filter = 'blur(' + Math.max(1, 2/sc) + 'px)'; fx.drawImage(sm, 0, 0, W, H); fx.filter = 'none';
       fx.globalCompositeOperation = 'destination-in'; fx.filter = 'blur(' + Math.max(1, 3) + 'px)'; fx.drawImage(full, 0, 0); fx.filter = 'none';
       fx.globalCompositeOperation = 'source-over';
-      tagDesign = document.createElement('canvas'); tagDesign.width = W0; tagDesign.height = H0;
+      tagDesign = reuse('tagDesign', W0, H0);
       const tx2 = tagDesign.getContext('2d'); tx2.drawImage(designCanvas, 0, 0);
       for (let i = 0; i < 3; i++) tx2.drawImage(fill, r.x, r.y);
     }
