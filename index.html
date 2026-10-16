@@ -98,20 +98,38 @@ button:disabled{opacity:.5;cursor:default}
 .flips{display:flex;flex-wrap:wrap;gap:8px}
 .flips button{flex:1;min-width:0;padding:7px 8px;font-size:12.5px}
 .flips button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.safeprev{margin:4px 0 0;display:flex;flex-direction:column;gap:6px}
+.safeprev canvas{width:100%;height:auto;border-radius:12px;border:2px solid var(--line);background:var(--bg)}
+.safeprev figcaption{font-size:11.5px;color:var(--muted);line-height:1.5}
+.prompt{border:2px solid var(--line);border-radius:16px;padding:10px 12px;background:var(--accent-soft)}
+.prompt summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--accent)}
+.prompt[open]{display:flex;flex-direction:column;gap:8px}
+.prompt textarea{font:12px/1.5 var(--f-body);color:var(--fg);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px;width:100%;box-sizing:border-box;resize:vertical}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
   header{margin-bottom:12px} h1{font-size:21px} header p{font-size:12px}
-  .step h2{cursor:pointer;justify-content:space-between;padding-block:4px}
-  .step h2::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px}
+  body{background-size:36px 36px,36px 36px,auto,auto,auto}
+  header{flex-direction:column;align-items:flex-start;background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:12px 16px;box-shadow:var(--shadow)}
+  .panel{background:transparent;border:none;box-shadow:none;padding:0;gap:12px}
+  .step{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:12px 14px;box-shadow:var(--shadow)}
+  .step:nth-child(1){border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+  .step:nth-child(2){border-color:color-mix(in srgb,var(--accent2) 35%,var(--line))}
+  .step:nth-child(3){border-color:color-mix(in srgb,var(--accent3) 45%,var(--line))}
+  .step:nth-child(4){border-color:color-mix(in srgb,var(--accent2) 25%,var(--accent) 25%)}
+  .step.collapsed{padding-block:8px}
+  .stage{border-radius:0 0 24px 24px;border-top:none;margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(8px)}
+  .step h2{cursor:pointer;justify-content:flex-start;padding-block:4px}
+  .step h2::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px}
   .step.collapsed h2::after{transform:rotate(-45deg)}
   .step.collapsed > :not(h2){display:none!important}
   .swatches{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .swatches.wide{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sw{padding:10px 8px;font-size:12.5px}
   .check{min-height:36px}
   .row input[type=range]{height:28px}
   .seg button{padding:6px 9px}
-  .mobilebar{display:flex;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--panel);border-top:1px solid var(--line);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .mobilebar{display:flex;gap:8px;position:fixed;left:0;right:0;bottom:0;z-index:20;background:color-mix(in srgb,var(--panel) 80%,transparent);backdrop-filter:blur(12px);border-top:2px solid var(--line);border-radius:22px 22px 0 0;box-shadow:0 -8px 24px rgba(255,79,154,.15);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
   .mobilebar button{flex:1}
 }
 .view:not(.zoom) canvas,.view:not(.zoom) img{width:auto;max-width:100%;max-height:calc(100vh - 130px);margin:0 auto}
@@ -135,10 +153,11 @@ button:disabled{opacity:.5;cursor:default}
           <span class="t"><b id="nameDesign">サンプル表示中</b><span>クリックまたはドラッグで画像を選ぶ（PNG / JPG）</span></span>
           <input type="file" id="fileDesign" accept="image/*">
         </label>
-        <p class="note" id="sizeInfo">フォーマットの比率は 横1.41 : 縦1（推奨 3307×2347px 以上）。</p>
+        <p class="note" id="sizeInfo">印刷用デザインは 3307×2347px（横1.41 : 縦1）で作ります。</p>
         <h3>リサイズ（フォーマットに合わせる）</h3>
-        <div class="swatches" role="radiogroup" aria-label="合わせ方">
+        <div class="swatches wide" role="radiogroup" aria-label="合わせ方">
           <label class="sw"><input type="radio" name="fit" value="cover" checked>いっぱいに（はみ出しカット）</label>
+          <label class="sw"><input type="radio" name="fit" value="safe">安全範囲に収める（周りはぼかして延長）</label>
           <label class="sw"><input type="radio" name="fit" value="contain">全体を入れる（余白あり）</label>
           <label class="sw"><input type="radio" name="fit" value="stretch">引き伸ばし</label>
         </div>
@@ -147,6 +166,16 @@ button:disabled{opacity:.5;cursor:default}
         <div class="row"><label for="dx">左右</label><input type="range" id="dx" min="-50" max="50" step="0.5" value="0"><output id="dxOut">0</output></div>
         <div class="row"><label for="dy">上下</label><input type="range" id="dy" min="-50" max="50" step="0.5" value="0"><output id="dyOut">0</output></div>
         <div class="links"><button class="link" id="designReset" type="button">リサイズを元に戻す</button></div>
+        <figure class="safeprev">
+          <canvas id="safePrev" width="331" height="235" aria-label="安全範囲の確認"></canvas>
+          <figcaption>点線の内側が<b>安全範囲</b>（X 309〜2984px／Y 559〜2081px）。顔・名前・ロゴはこの中へ。色の付いた部分は切れたり歪んだりします。</figcaption>
+        </figure>
+        <details class="prompt">
+          <summary>AIで一周デザインに広げる（プロンプト）</summary>
+          <p class="note">正面デザインしかないときは、元画像と一緒にこのプロンプトを画像生成AIに渡すと、3307×2347pxの一周デザインを作れます。できた画像をこの欄に入れてください。</p>
+          <textarea id="promptText" readonly rows="8"></textarea>
+          <button type="button" id="copyPrompt">プロンプトをコピー</button>
+        </details>
       </div>
 
       <div class="step">
@@ -685,6 +714,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   const PLACE = [[367.104, 0, 0, 260.536, -13.196, 25.222], [367.104, 0, 0, 260.536, 309.28, 26.11], [367.104, 0, 0, 260.536, -57.817, 26.11], [476.082, 0, 0, 337.879, 36.987, 470.333], [106.88, 0, 0, 75.854, 396.28, 43.838], [124.9, 0, 0, 88.644, 388.59, 46.6], [143.03, 0, 0, 101.513, 381.014, 42.977]];
   const ASPECT = 476.082/337.879;
   const DEF = {size:29, pos:54.7, shadow:55};
+  // 印刷用デザインのサイズと、重要な要素を置ける安全範囲（px）
+  const DW_OUT = 3307, DH_OUT = 2347, SAFE = {x:309, y:559, w:2984-309, h:2081-559};
+  const AI_PROMPT = "添付画像のオリジナルシャンパンボトルの正面デザインをもとに、シャンパンボトルへ一周巻き付けて使用できる「全面印刷用の横長デザインデータ」へ変換してください。\n\n添付画像は、デザインのテーマ・人物・キャラクター・写真・配色・文字・ロゴ・装飾・質感・世界観を確認するための唯一の参考画像です。\n\n完成画像はボトルのモックアップではなく、印刷に使用できる平面の長方形デザインとして制作してください。\n\n【完成サイズ】\n横3307ピクセル × 縦2347ピクセル\n高解像度\n横長の平面デザイン\nボトル本体や背景のグレー部分は描かず、印刷されるデザイン部分のみを表示\n\n【制作内容】\n添付画像の正面デザインに使われている人物、写真、キャラクター、文字、ロゴ、配色、モチーフ、装飾、背景、質感などを分析し、元画像のデザインテイストを保ったまま、左右へ自然にデザインを広げてください。\n\n正面部分だけを単純に引き伸ばすのではなく、中央に正面デザインを再構成し、左右の側面から背面まで自然につながるボトル一周分のデザインにしてください。\n\n元画像に人物やキャラクターがいる場合は中央正面の主役として配置し、顔、髪型、表情、衣装、ポーズ、体形、キャラクターの造形を勝手に変更しないでください。\n\n元画像に文字やロゴがある場合は、内容、綴り、書体の印象、形状をできる限り維持してください。新しい名前、日付、ロゴ、文章などを勝手に追加しないでください。\n\n左右から背面にあたる部分には、元画像に使われている背景、模様、光、グラデーション、テクスチャ、装飾、植物、花、宝石、リボン、星、煙、エフェクトなどを活用し、元デザインと違和感なくつながるように展開してください。\n\n元画像に含まれていないモチーフを大量に追加せず、元の世界観を優先してください。\n\n【重要要素を配置できる安全範囲】\n完成画像を横3307px、縦2347pxとした場合、以下の範囲内に、人物の顔、キャラクターの顔、ロゴ、名前、日付、タイトル、メイン文字、重要なモチーフを配置してください。\n\n・左端から309pxより内側\n・右端から323pxより内側\n・上端から559pxより下側\n・下端から266pxより上側\n\n座標で表す場合の安全範囲：\nX＝309px〜2984px\nY＝559px〜2081px\n\n特に重要な人物、顔、キャラクター、名前、メインタイトルは、画像の中央付近にまとめ、ボトル正面から見た際に最も美しく見えるようにしてください。\n\n【重要要素を入れない範囲】\n以下の範囲には、顔、人物の目元、キャラクターの顔、名前、日付、ロゴ、メインタイトル、読ませたい文字、重要な装飾を配置しないでください。\n\n・上部：Y＝0px〜559px\n・下部：Y＝2081px〜2347px\n・左側：X＝0px〜309px\n・右側：X＝2984px〜3307px\n\nこの範囲には、切れたり歪んだりしても問題のない背景、色、グラデーション、模様、光、粒子、煙、ぼかし、抽象的な装飾のみを配置してください。\n\n【一周デザインのつながり】\n画像の左端と右端は、ボトルの背面で接続する部分です。\n左右の端で色、明るさ、背景模様、テクスチャが不自然に途切れないようにし、巻き付けた際にできるだけ自然につながる構成にしてください。\n\n左右端に人物の顔、文字、ロゴ、大きなモチーフを配置しないでください。\n\n【構図】\n・正面中央が最も華やかで、主役が明確に見える構成\n・人物やキャラクターがいる場合は中央正面へ配置\n・タイトルや名前は人物と重なりすぎず、読みやすく配置\n・左右へ進むにつれて背景や補助装飾を中心に展開\n・背面部分も空白にせず、元デザインの世界観を保った背景で仕上げる\n・正面、側面、背面の境界が急に切り替わらない自然な構成\n・元画像の色調、明暗、質感、デザイン密度を維持\n・重要な部分が上下左右の禁止範囲へはみ出さないようにする\n\n添付画像のデザインを尊重し、別のデザインへ作り変えるのではなく、元の正面デザインをボトル一周分へ自然に拡張・再構成した完成データにしてください。";
   // 仕様ごとのレイヤー画像（位置は書き出し画像のピクセル座標）
   const OVL = {"nashi": [1765, 3018], "tagseal_white": [1828, 2983], "tagseal_black": [1827, 2985], "tagseal_pink": [1824, 2975], "nk_white": [586, 1657], "nk_black": [586, 1657], "nk_silver": [586, 1657], "nk_gold": [585, 1658], "sl_cl_silver": [548, 2195], "sl_cl_gold": [548, 2195], "sl_cl_white": [548, 2195], "sl_cl_black": [548, 2195], "sl_lx_green": [555, 2215], "sl_lx_white": [555, 2213], "sl_lx_black": [555, 2213], "sl_lx_gold": [555, 2213], "sl_lx_silver": [555, 2213], "deco_neck": [543, 2339], "deco_chira": [503, 2496], "ribbon": [422, 2013], "note": [123, 1651], "sl_back_white": [1131, 2213]};
   const TAGS = {"tagbody": [1770, 2817], "square": [1739, 2824], "heart": [1630, 2905]};
@@ -758,17 +790,24 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     const src = designImg || sampleDesign();
     const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
     // 出力サイズ：フォーマットの比率（1.41:1）。元画像の解像度をなるべく保つ
-    const cw = Math.max(1, Math.round(Math.max(sw, sh*ASPECT))), ch = Math.round(cw/ASPECT);
+    // 出力サイズ：印刷用の 3307×2347px に固定
+    const cw = DW_OUT, ch = DH_OUT;
     const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-    const x = c.getContext('2d');
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
     const fit = document.querySelector('input[name=fit]:checked').value, z = (+$('dz').value)/100;
+    // 画像を入れる枠（安全範囲モードは安全範囲の中）
+    const box = fit === 'safe' ? SAFE : {x:0, y:0, w:cw, h:ch};
     let w, h;
     if (fit === 'stretch') { w = cw; h = ch; }
-    else { const r = fit === 'cover' ? Math.max(cw/sw, ch/sh) : Math.min(cw/sw, ch/sh); w = sw*r; h = sh*r; }
+    else { const r = fit === 'cover' ? Math.max(box.w/sw, box.h/sh) : Math.min(box.w/sw, box.h/sh); w = sw*r; h = sh*r; }
     w *= z; h *= z;
-    const ox = (cw - w)/2 + (+$('dx').value)/100*cw, oy = (ch - h)/2 - (+$('dy').value)/100*ch;
-    if (fit === 'contain' || z < 1 || $('dx').value != 0 || $('dy').value != 0) { x.fillStyle = $('padColor').value; x.fillRect(0,0,cw,ch); }
-    x.imageSmoothingQuality = 'high';
+    const ox = box.x + (box.w - w)/2 + (+$('dx').value)/100*cw, oy = box.y + (box.h - h)/2 - (+$('dy').value)/100*ch;
+    if (fit === 'safe') {
+      // 周りは同じ画像を大きくしてぼかしたもので埋める（背景の延長）
+      const r = Math.max(cw/sw, ch/sh) * 1.08;
+      x.save(); x.filter = 'blur(' + Math.round(cw/45) + 'px) saturate(1.1)';
+      x.drawImage(src, (cw - sw*r)/2, (ch - sh*r)/2, sw*r, sh*r); x.restore();
+    } else if (fit === 'contain' || z < 1 || $('dx').value != 0 || $('dy').value != 0) { x.fillStyle = $('padColor').value; x.fillRect(0,0,cw,ch); }
     x.drawImage(src, ox, oy, w, h);
     if ($('useLogo').checked && logoImg) {
       const k = cw/1440, lw = Math.round(cw*(+$('size').value)/100), lh = Math.round(logoImg.height*lw/logoImg.width);
@@ -785,8 +824,18 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   }
 
   // 2) フォーマットへ差し込み：出力 = 下地 + 透過率 × デザイン色
+  function drawSafePrev(){
+    const c = $('safePrev'), x = c.getContext('2d'), k = c.width / DW_OUT;
+    x.clearRect(0,0,c.width,c.height); x.drawImage(designCanvas, 0, 0, c.width, c.height);
+    x.fillStyle = 'rgba(255,79,154,.32)';
+    x.fillRect(0, 0, c.width, SAFE.y*k); x.fillRect(0, (SAFE.y+SAFE.h)*k, c.width, c.height);
+    x.fillRect(0, SAFE.y*k, SAFE.x*k, SAFE.h*k); x.fillRect((SAFE.x+SAFE.w)*k, SAFE.y*k, c.width, SAFE.h*k);
+    x.setLineDash([5,4]); x.lineWidth = 1.5; x.strokeStyle = '#fff'; x.strokeRect(SAFE.x*k, SAFE.y*k, SAFE.w*k, SAFE.h*k);
+    x.setLineDash([5,4]); x.lineDashOffset = 5; x.strokeStyle = '#ff4f9a'; x.strokeRect(SAFE.x*k, SAFE.y*k, SAFE.w*k, SAFE.h*k); x.lineDashOffset = 0;
+  }
   function compose(){
     designCanvas = buildDesign();
+    drawSafePrev();
     const D = designCanvas.getContext('2d').getImageData(0,0,designCanvas.width,designCanvas.height), dd = D.data, DW = D.width, DH = D.height;
     const o = new ImageData(new Uint8ClampedArray(base.data), OW, OH), od = o.data;
     let md = map.data;
@@ -885,10 +934,17 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   ['decoNeck','decoChira','showNote'].forEach(id => $(id).addEventListener('change', schedule));
   function syncDesignAdj(){
     $('dzOut').value = $('dz').value + '%'; $('dxOut').value = $('dx').value; $('dyOut').value = $('dy').value;
-    $('padRow').hidden = document.querySelector('input[name=fit]:checked').value !== 'contain' && +$('dz').value >= 100;
+    const fv = document.querySelector('input[name=fit]:checked').value;
+    $('padRow').hidden = fv === 'safe' || (fv !== 'contain' && +$('dz').value >= 100);
   }
   ['dz','dx','dy','padColor'].forEach(id => $(id).addEventListener('input', () => { syncDesignAdj(); schedule(); }));
   document.querySelectorAll('input[name=fit]').forEach(r => r.addEventListener('change', () => { syncDesignAdj(); schedule(); }));
+  $('promptText').value = AI_PROMPT;
+  $('copyPrompt').addEventListener('click', () => {
+    const done = () => status('プロンプトをコピーしました。');
+    try { navigator.clipboard.writeText(AI_PROMPT).then(done, () => { $('promptText').select(); status('文字を選択しました。コピーしてください。'); }); }
+    catch (e) { $('promptText').select(); status('文字を選択しました。コピーしてください。'); }
+  });
   $('designReset').addEventListener('click', () => { $('dz').value = 100; $('dx').value = 0; $('dy').value = 0; document.querySelector('input[name=fit][value=cover]').checked = true; syncDesignAdj(); schedule(); });
   $('padAuto').addEventListener('click', () => {
     if (!designImg) return;
@@ -917,8 +973,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   pick($('fileDesign'), $('dropDesign'), (img, n, url) => {
     designImg = img; isSample = false; designName = n; $('nameDesign').textContent = n; $('thumbDesign').src = url;
     const stem = n.replace(/\.[^.]+$/, ''); if (!$('name').value) $('name').value = stem;
-    $('sizeInfo').textContent = `元画像 ${img.naturalWidth}×${img.naturalHeight}px（比率 ${(img.naturalWidth/img.naturalHeight).toFixed(2)} : 1）→ フォーマットは 1.41 : 1。`;
-    if (img.naturalWidth < 2000) status(`画像の幅が ${img.naturalWidth}px なので、提出用では引き伸ばされます。確認用には十分です。`);
+    $('sizeInfo').textContent = `元画像 ${img.naturalWidth}×${img.naturalHeight}px（比率 ${(img.naturalWidth/img.naturalHeight).toFixed(2)} : 1）→ 印刷用は 3307×2347px（1.41 : 1）。`;
+    if (img.naturalWidth < 2000) status(`画像の幅が ${img.naturalWidth}px なので、3307px に引き伸ばされます。確認用には十分ですが、印刷用には高解像度の画像がおすすめです。`);
   });
   pick($('fileOrig'), $('dropOrig'), (img, n, url) => { origImg = trim(img); $('nameOrig').textContent = n; $('thumbOrig').src = url; $('origR').checked = true; });
   pick($('fileLogo'), $('dropLogo'), (img, n, url) => { logoImg = trim(img); $('nameLogo').textContent = n; $('thumbLogo').src = url; $('useLogo').checked = true; syncOutputs(); });
