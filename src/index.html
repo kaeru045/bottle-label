@@ -168,7 +168,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:55</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 20:50</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -282,6 +282,9 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
           <label class="sw"><input type="radio" name="tag" value="none" checked>なし</label>
           <label class="sw"><input type="radio" name="tag" value="square">スクエア</label>
           <label class="sw"><input type="radio" name="tag" value="heart">ハート型</label>
+          <label class="sw"><input type="radio" name="tag" value="cat">猫</label>
+          <label class="sw"><input type="radio" name="tag" value="bear">くま</label>
+          <label class="sw"><input type="radio" name="tag" value="moon">月</label>
           <label class="sw"><input type="radio" name="tag" value="tagbody">ボトル型</label>
         </div>
         <div class="tagadj" id="tagAdj">
@@ -344,7 +347,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
   // 提出用フォーマット（A4, 300dpi で書き出し）の中でデザイン画像が置かれている4か所。PDF座標 [幅, 高さ, x, y]
   const S = 300/72, PH = 841.89, OW = 2481, OH = 3508;
   // [a,b,c,d,e,f]：画像の単位正方形 → PDF座標。1-3 ボトル図、4 デザイン枠、5 タグ（ボトル型）、6 タグ（プレート型・縦）
-  const PLACE = [[367.104, 0, 0, 260.536, -13.196, 25.222], [367.104, 0, 0, 260.536, 309.28, 26.11], [367.104, 0, 0, 260.536, -57.817, 26.11], [476.082, 0, 0, 337.879, 36.987, 470.333], [106.88, 0, 0, 75.854, 396.28, 43.838], [124.9, 0, 0, 88.644, 388.59, 46.6], [143.03, 0, 0, 101.513, 381.014, 42.977]];
+  const PLACE = [[367.104, 0, 0, 260.536, -13.196, 25.222], [367.104, 0, 0, 260.536, 309.28, 26.11], [367.104, 0, 0, 260.536, -57.817, 26.11], [476.082, 0, 0, 337.879, 36.987, 470.333], [106.88, 0, 0, 75.854, 396.28, 43.838], [124.9, 0, 0, 88.644, 388.59, 46.6], [143.03, 0, 0, 101.513, 381.014, 42.977], [118.56, 0, 0, 101.76, 393.6, 42.93], [86.88, 0, 0, 101.76, 409.44, 42.93], [123.12, 0, 0, 97.44, 391.2, 45.09]];
   const ASPECT = 476.082/337.879;
   const DEF = {size:29, pos:54.7, shadow:55};
   // 印刷用デザインのサイズと、重要な要素を置ける安全範囲（px）
@@ -352,13 +355,13 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
   const AI_PROMPT = "添付画像のオリジナルシャンパンボトルの正面デザインをもとに、シャンパンボトルへ一周巻き付けて使用できる「全面印刷用の横長デザインデータ」へ変換してください。\n\n添付画像は、デザインのテーマ・人物・キャラクター・写真・配色・文字・ロゴ・装飾・質感・世界観を確認するための唯一の参考画像です。\n\n完成画像はボトルのモックアップではなく、印刷に使用できる平面の長方形デザインとして制作してください。\n\n【完成サイズ】\n横3307ピクセル × 縦2347ピクセル\n高解像度\n横長の平面デザイン\nボトル本体や背景のグレー部分は描かず、印刷されるデザイン部分のみを表示\n\n【制作内容】\n添付画像の正面デザインに使われている人物、写真、キャラクター、文字、ロゴ、配色、モチーフ、装飾、背景、質感などを分析し、元画像のデザインテイストを保ったまま、左右へ自然にデザインを広げてください。\n\n正面部分だけを単純に引き伸ばすのではなく、中央に正面デザインを再構成し、左右の側面から背面まで自然につながるボトル一周分のデザインにしてください。\n\n元画像に人物やキャラクターがいる場合は中央正面の主役として配置し、顔、髪型、表情、衣装、ポーズ、体形、キャラクターの造形を勝手に変更しないでください。\n\n元画像に文字やロゴがある場合は、内容、綴り、書体の印象、形状をできる限り維持してください。新しい名前、日付、ロゴ、文章などを勝手に追加しないでください。\n\n左右から背面にあたる部分には、元画像に使われている背景、模様、光、グラデーション、テクスチャ、装飾、植物、花、宝石、リボン、星、煙、エフェクトなどを活用し、元デザインと違和感なくつながるように展開してください。\n\n元画像に含まれていないモチーフを大量に追加せず、元の世界観を優先してください。\n\n【重要要素を配置できる安全範囲】\n完成画像を横3307px、縦2347pxとした場合、以下の範囲内に、人物の顔、キャラクターの顔、ロゴ、名前、日付、タイトル、メイン文字、重要なモチーフを配置してください。\n\n・左端から309pxより内側\n・右端から323pxより内側\n・上端から559pxより下側\n・下端から266pxより上側\n\n座標で表す場合の安全範囲：\nX＝309px〜2984px\nY＝559px〜2081px\n\n特に重要な人物、顔、キャラクター、名前、メインタイトルは、画像の中央付近にまとめ、ボトル正面から見た際に最も美しく見えるようにしてください。\n\n【重要要素を入れない範囲】\n以下の範囲には、顔、人物の目元、キャラクターの顔、名前、日付、ロゴ、メインタイトル、読ませたい文字、重要な装飾を配置しないでください。\n\n・上部：Y＝0px〜559px\n・下部：Y＝2081px〜2347px\n・左側：X＝0px〜309px\n・右側：X＝2984px〜3307px\n\nこの範囲には、切れたり歪んだりしても問題のない背景、色、グラデーション、模様、光、粒子、煙、ぼかし、抽象的な装飾のみを配置してください。\n\n【一周デザインのつながり】\n画像の左端と右端は、ボトルの背面で接続する部分です。\n左右の端で色、明るさ、背景模様、テクスチャが不自然に途切れないようにし、巻き付けた際にできるだけ自然につながる構成にしてください。\n\n左右端に人物の顔、文字、ロゴ、大きなモチーフを配置しないでください。\n\n【構図】\n・正面中央が最も華やかで、主役が明確に見える構成\n・人物やキャラクターがいる場合は中央正面へ配置\n・タイトルや名前は人物と重なりすぎず、読みやすく配置\n・左右へ進むにつれて背景や補助装飾を中心に展開\n・背面部分も空白にせず、元デザインの世界観を保った背景で仕上げる\n・正面、側面、背面の境界が急に切り替わらない自然な構成\n・元画像の色調、明暗、質感、デザイン密度を維持\n・重要な部分が上下左右の禁止範囲へはみ出さないようにする\n\n添付画像のデザインを尊重し、別のデザインへ作り変えるのではなく、元の正面デザインをボトル一周分へ自然に拡張・再構成した完成データにしてください。";
   // 仕様ごとのレイヤー画像（位置は書き出し画像のピクセル座標）
   const OVL = {"nashi": [1765, 3018], "tagseal_white": [1828, 2983], "tagseal_black": [1827, 2985], "tagseal_pink": [1824, 2975], "nk_white": [586, 1657], "nk_black": [586, 1657], "nk_silver": [586, 1657], "nk_gold": [585, 1658], "sl_cl_silver": [548, 2195], "sl_cl_gold": [548, 2195], "sl_cl_white": [548, 2195], "sl_cl_black": [548, 2195], "sl_lx_green": [555, 2215], "sl_lx_white": [555, 2213], "sl_lx_black": [555, 2213], "sl_lx_gold": [555, 2213], "sl_lx_silver": [555, 2213], "deco_neck": [543, 2339], "deco_chira": [503, 2496], "ribbon": [422, 2013], "note": [123, 1651], "sl_back_white": [1131, 2213]};
-  const TAGS = {"tagbody": [1770, 2817], "square": [1739, 2824], "heart": [1630, 2905]};
+  const TAGS = {"tagbody": [1770, 2817], "square": [1739, 2824], "heart": [1630, 2905], "cat": [1640, 2905], "moon": [1706, 2905], "bear": [1630, 2914]};
   const ORIG_BOX = {x:555, y:2219, w:314, h:231}; let origImg = null;
   const ov = {}, tags = {};
   // ネック色：白いキャップ画像に色を乗算して作る（.ai のピンクと同じ作り方）
   const tintCache = {}, ribCache = {};
   const ADJ0 = () => ({x:0, y:0, z:1, r:0, fx:false, fy:false});
-  const tagAdj = {tagbody:ADJ0(), square:ADJ0(), heart:ADJ0()};
+  const tagAdj = {tagbody:ADJ0(), square:ADJ0(), heart:ADJ0(), cat:ADJ0(), moon:ADJ0(), bear:ADJ0()};
   function syncTagAdj(){
     const k = document.querySelector('input[name=tag]:checked').value, a = tagAdj[k];
     $('tagAdj').hidden = !a;
@@ -482,9 +485,9 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
         md[i] = tp.t.data[j]; md[i+1] = tp.t.data[j+1];
       }
     }
-    const TAGIDX = {tagbody:4, square:5, heart:6};
+    const TAGIDX = {tagbody:4, square:5, heart:6, cat:7, moon:8, bear:9};
     // タグの画像枠（PDF座標 x, y, 幅, 高さ）
-    const TAGRECT = {tagbody:[396.28,43.838,106.88,75.854], square:[420.847,46.6,60.385,88.644], heart:[391.115,42.977,122.828,101.513]};
+    const TAGRECT = {tagbody:[396.28,43.838,106.88,75.854], square:[420.847,46.6,60.385,88.644], heart:[391.115,42.977,122.828,101.513], cat:[393.6, 42.93, 118.56, 101.76], moon:[409.44, 42.93, 86.88, 101.76], bear:[391.2, 45.09, 123.12, 97.44]};
     const AR = PLACE[3][0] / PLACE[3][3];
     const PL = PLACE.map((p, i) => {
       const tk = Object.keys(TAGIDX).find(k => TAGIDX[k] === i);
@@ -710,10 +713,10 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 
   // 書き出し
   let lastPL = null, lastTagRect = null;
-  const TAGNAME = {square:'スクエア', heart:'ハート型', tagbody:'ボトル型'};
+  const TAGNAME = {square:'スクエア', heart:'ハート型', tagbody:'ボトル型', cat:'猫', bear:'くま', moon:'月'};
   // タグ画像：タグの画像枠を高解像度で切り出し、タグの形で切り抜いた透過PNG
   function buildTagCanvas(){
-    const k = document.querySelector('input[name=tag]:checked').value, idx = {tagbody:4, square:5, heart:6}[k];
+    const k = document.querySelector('input[name=tag]:checked').value, idx = {tagbody:4, square:5, heart:6, cat:7, moon:8, bear:9}[k];
     if (idx == null || !lastPL || !tags[k]) return null;
     const [rx, ry, rw, rh] = lastTagRect[k], [a,b,c,d,e,f] = lastPL[idx], DWd = designCanvas.width, DHd = designCanvas.height;
     const s = 1600 / Math.max(rw, rh), W = Math.round(rw*s), H = Math.round(rh*s);
@@ -780,7 +783,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
   });
   guard('dlTag', async () => {
     const tc = buildTagCanvas();
-    if (!tc) { status('タグが「なし」になっています。仕様の「タグ」でスクエア・ハート型・ボトル型を選んでください。', true); return; }
+    if (!tc) { status('タグが「なし」になっています。仕様の「タグ」でスクエア・ハート型・猫・くま・月・ボトル型を選んでください。', true); return; }
     const k = document.querySelector('input[name=tag]:checked').value;
     save(`${fname()}タグ_${TAGNAME[k]}.png`, await toBlob(tc, 'image/png'));
   });
