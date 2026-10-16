@@ -6,47 +6,57 @@
 <style>
 /* Layout: 左に操作パネル、右に提出用フォーマットの大きなプレビュー。狭い画面では縦に積む */
 :root{
-  --bg:#fff0f6; --bg2:#eaf3ff; --bg3:#fff8e1; --dot:rgba(255,105,170,.14); --dot2:rgba(120,170,255,.16);
+  --bg:#eaf0ff; --bg2:#eaf3ff; --bg3:#fff8e1; --dot:rgba(255,105,170,.14); --dot2:rgba(120,170,255,.16);
   --panel:#ffffff; --fg:#2a2233; --muted:#7a6c86; --line:#f1d6e5;
-  --accent:#ff4f9a; --accent-ink:#ffffff; --accent-soft:#ffe3f0; --accent2:#7c6cff; --accent3:#ffc93c; --warn:#d0413a;
-  --shadow:0 10px 30px rgba(255,79,154,.14);
+  --accent:#ff4f9a; --accent-ink:#ffffff; --accent-soft:#ffe3f0; --accent2:#7c5cff; --accent3:#00d9ff; --warn:#d0413a;
+  --shadow:0 0 0 1px rgba(0,229,255,.25),0 10px 34px rgba(0,229,255,.18),0 0 60px rgba(255,47,179,.12);
   --f-display:"Mochiy Pop One","Zen Kaku Gothic New","Hiragino Sans",sans-serif;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#2a1630; --bg2:#16203a; --bg3:#2d2414; --dot:rgba(255,105,170,.18); --dot2:rgba(120,170,255,.16);
   --panel:#231b2b; --fg:#f6eef8; --muted:#bfaecb; --line:#4a3456;
-  --accent:#ff6fae; --accent-ink:#1d0f17; --accent-soft:#4a2338; --accent2:#a89bff; --accent3:#ffd45e; --warn:#ff8a7a;
+  --accent:#ff6fae; --accent-ink:#1d0f17; --accent-soft:#4a2338; --accent2:#a89bff; --accent3:#4fe6ff; --warn:#ff8a7a;
   --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#2a1630; --bg2:#16203a; --bg3:#2d2414; --dot:rgba(255,105,170,.18); --dot2:rgba(120,170,255,.16);
   --panel:#231b2b; --fg:#f6eef8; --muted:#bfaecb; --line:#4a3456;
-  --accent:#ff6fae; --accent-ink:#1d0f17; --accent-soft:#4a2338; --accent2:#a89bff; --accent3:#ffd45e; --warn:#ff8a7a;
+  --accent:#ff6fae; --accent-ink:#1d0f17; --accent-soft:#4a2338; --accent2:#a89bff; --accent3:#4fe6ff; --warn:#ff8a7a;
   --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}
 body{color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.6;min-height:100vh;
-  background-color:var(--bg);
+  /* 近未来：ネオンのグリッド＋ホログラムの光 */
+  background-color:#060a1f;
   background-image:
-    radial-gradient(circle at 12px 12px, var(--dot) 5px, transparent 6px),
-    radial-gradient(circle at 36px 36px, var(--dot2) 3px, transparent 4px),
-    radial-gradient(1200px 600px at 0% 0%, var(--bg) 0%, transparent 60%),
-    radial-gradient(900px 600px at 100% 10%, var(--bg2) 0%, transparent 60%),
-    radial-gradient(900px 700px at 50% 100%, var(--bg3) 0%, transparent 60%);
-  background-size:48px 48px,48px 48px,auto,auto,auto;
+    linear-gradient(rgba(0,229,255,.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.10) 1px, transparent 1px),
+    radial-gradient(700px 500px at 8% 0%, rgba(255,47,179,.42), transparent 60%),
+    radial-gradient(800px 560px at 100% 12%, rgba(0,217,255,.38), transparent 60%),
+    radial-gradient(900px 600px at 50% 105%, rgba(124,92,255,.55), transparent 65%),
+    linear-gradient(180deg, #060a1f 0%, #0b1240 55%, #160a3a 100%);
+  background-size:44px 44px,44px 44px,auto,auto,auto,auto;
   background-attachment:fixed}
+body::before{content:"";position:fixed;inset:auto 0 0 0;height:42vh;z-index:-1;pointer-events:none;
+  background-image:linear-gradient(rgba(255,47,179,.55) 1.5px, transparent 1.5px),linear-gradient(90deg, rgba(0,229,255,.5) 1.5px, transparent 1.5px);
+  background-size:64px 32px;transform:perspective(380px) rotateX(62deg);transform-origin:bottom;
+  -webkit-mask-image:linear-gradient(to top, #000 10%, transparent 95%);mask-image:linear-gradient(to top, #000 10%, transparent 95%)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px)}
+@media (prefers-reduced-motion:no-preference){body::before{animation:gridmove 6s linear infinite}@keyframes gridmove{to{background-position:0 32px,0 32px}}}
 .wrap{max-width:1280px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin-bottom:20px}
 h1{font-family:var(--f-display);font-weight:400;font-size:28px;margin:0;letter-spacing:.04em;text-wrap:balance;background:linear-gradient(90deg,var(--accent),var(--accent2) 55%,var(--accent3));-webkit-background-clip:text;background-clip:text;color:transparent}
 h1::before{content:"🍾 ";-webkit-text-fill-color:initial}
-header p{margin:0;color:var(--muted)}
+h1{background:linear-gradient(90deg,#ff4fd8,#a98bff 45%,#38f0ff);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 10px rgba(0,229,255,.45))}
+header p{margin:0;color:#c6d2ff;text-shadow:0 0 8px rgba(0,229,255,.35)}
 .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
-.panel{background:var(--panel);border:2px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:18px}
+.panel{background:color-mix(in srgb,var(--panel) 84%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1.5px solid rgba(0,229,255,.35);border-radius:22px;box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:18px}
 .step{display:flex;flex-direction:column;gap:8px}
 .step h2{font-size:13px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
 .step h2{font-size:14px}
 .step h2 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-family:var(--f-display)}
 .step:nth-child(2) h2 .n{background:var(--accent2)}
-.step:nth-child(3) h2 .n{background:var(--accent3);color:#3a2a00}
+.step:nth-child(3) h2 .n{background:var(--accent3);color:#002a33}
 .step:nth-child(4) h2 .n{background:linear-gradient(135deg,var(--accent),var(--accent2))}
 .drop{border:2px dashed var(--line);border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;min-height:64px}
 .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
@@ -85,7 +95,7 @@ button:disabled{opacity:.5;cursor:default}
 .note{font-size:12px;color:var(--muted);margin:0}
 .status{font-size:12px;min-height:1.6em;color:var(--muted)}
 .status.err{color:var(--warn)}
-.stage{background:var(--panel);border:2px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);box-sizing:border-box}
+.stage{background:color-mix(in srgb,var(--panel) 84%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1.5px solid rgba(0,229,255,.35);border-radius:22px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);box-sizing:border-box}
 /* スマホ等：プレビューを上に固定し、操作欄をその下でスクロール */
 @media (max-width:860px){.stage{order:-1;top:env(safe-area-inset-top,0px);max-height:48vh;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.12)}.stage .note{display:none}}
 .stage-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
@@ -115,7 +125,8 @@ button:disabled{opacity:.5;cursor:default}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
   header{margin-bottom:12px} h1{font-size:21px} header p{font-size:12px}
-  body{background-size:36px 36px,36px 36px,auto,auto,auto}
+  body{background-size:32px 32px,32px 32px,auto,auto,auto,auto}
+  header p{color:var(--muted);text-shadow:none}
   header{flex-direction:column;align-items:flex-start;background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:12px 16px;box-shadow:var(--shadow)}
   .panel{background:transparent;border:none;box-shadow:none;padding:0;gap:12px}
   .step{background:var(--panel);border:2px solid var(--line);border-radius:20px;padding:12px 14px;box-shadow:var(--shadow)}
