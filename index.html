@@ -121,6 +121,8 @@ button:disabled{opacity:.5;cursor:default}
 .prompt summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--accent)}
 .prompt[open]{display:flex;flex-direction:column;gap:8px}
 .prompt textarea{font:12px/1.5 var(--f-body);color:var(--fg);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px;width:100%;box-sizing:border-box;resize:vertical}
+.pastebtn{align-self:flex-start;margin-top:6px;padding:4px 12px;font-size:12px;border-radius:999px}
+.drop.target{border-color:var(--accent3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 25%,transparent)}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -167,7 +169,7 @@ button:disabled{opacity:.5;cursor:default}
         <h2><span class="n">1</span>デザイン画像</h2>
         <label class="drop" id="dropDesign">
           <img id="thumbDesign" alt="">
-          <span class="t"><b id="nameDesign">サンプル表示中</b><span>クリックまたはドラッグで画像を選ぶ（PNG / JPG）</span></span>
+          <span class="t"><b id="nameDesign">サンプル表示中</b><span>クリック・ドラッグ・Ctrl+V（⌘+V）で貼り付け</span></span>
           <input type="file" id="fileDesign" accept="image/*">
         </label>
         <p class="note" id="sizeInfo">印刷用デザインは 3307×2347px（横1.41 : 縦1）で作ります。</p>
@@ -201,7 +203,7 @@ button:disabled{opacity:.5;cursor:default}
         <label class="check"><input type="checkbox" id="useLogo" checked> ロゴを裏に入れる</label>
         <label class="drop" id="dropLogo">
           <img id="thumbLogo" alt="">
-          <span class="t"><b id="nameLogo">ロゴ</b><span>背景が透明なPNGを選ぶ</span></span>
+          <span class="t"><b id="nameLogo">ロゴ</b><span>背景が透明なPNG。枠にマウスを乗せてCtrl+Vでも貼り付け可</span></span>
           <input type="file" id="fileLogo" accept="image/png,image/webp,image/*">
         </label>
         <div class="row"><label for="size">大きさ</label><input type="range" id="size" min="10" max="60" step="0.5" value="29"><output id="sizeOut">29%</output></div>
@@ -252,7 +254,7 @@ button:disabled{opacity:.5;cursor:default}
         </div>
         <label class="drop" id="dropOrig">
           <img id="thumbOrig" alt="">
-          <span class="t"><b id="nameOrig">未選択</b><span>前面のシール画像（背景が透明なPNGがおすすめ）。背面は白無地になります</span></span>
+          <span class="t"><b id="nameOrig">未選択</b><span>前面のシール画像（背景が透明なPNGがおすすめ）。枠にマウスを乗せてCtrl+Vでも貼り付け可。背面は白無地</span></span>
           <input type="file" id="fileOrig" accept="image/*">
         </label>
         <h3>デコ（ストーン）</h3>
@@ -982,6 +984,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   });
   $('reset').addEventListener('click', () => { $('size').value = DEF.size; $('pos').value = DEF.pos; $('shadow').value = DEF.shadow; $('useLogo').checked = true; syncOutputs(); schedule(); });
 
+  // 貼り付け先：最後に触った画像の枠（最初はデザイン画像）
+  const pasteTargets = {}; let pasteTarget = 'dropDesign';
   function pick(input, drop, onImg){
     const take = f => { if (!f || !f.type.startsWith('image/')) { status('画像ファイル（PNG / JPG）を選んでください。', true); return; }
       const url = URL.createObjectURL(f); load(url).then(img => { onImg(img, f.name, url); status(''); schedule(); }).catch(() => status('この画像は読み込めませんでした。PNG か JPG で保存し直してください。', true)); };
@@ -989,7 +993,32 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('over'));
     drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); take(e.dataTransfer.files[0]); });
+    pasteTargets[drop.id] = take;
+    ['pointerdown','pointerenter','focusin'].forEach(ev => drop.addEventListener(ev, () => setPasteTarget(drop.id)));
+    // 枠の中の「貼り付け」ボタン（スマホ向け）
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'pastebtn'; btn.textContent = '📋 貼り付け';
+    btn.addEventListener('click', async e => {
+      e.preventDefault(); e.stopPropagation(); setPasteTarget(drop.id);
+      try {
+        const items = await navigator.clipboard.read();
+        for (const it of items) { const t = it.types.find(t => t.startsWith('image/')); if (t) { const b = await it.getType(t); take(new File([b], 'pasted.' + t.split('/')[1], {type: t})); return; } }
+        status('クリップボードに画像がありません。画像をコピーしてからもう一度押してください。', true);
+      } catch (err) { status('このボタンが使えない環境です。Ctrl+V（Macは⌘+V）で貼り付けてください。', true); }
+    });
+    drop.querySelector('.t').appendChild(btn);
   }
+  function setPasteTarget(id){ pasteTarget = id; document.querySelectorAll('.drop').forEach(d => d.classList.toggle('target', d.id === id)); }
+  document.addEventListener('paste', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    if (tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type === 'text')) return;
+    e.preventDefault();
+    const f = files[0], named = new File([f], f.name && f.name !== 'image.png' ? f.name : 'pasted.png', {type: f.type});
+    (pasteTargets[pasteTarget] || pasteTargets.dropDesign)(named);
+    const label = {dropDesign:'デザイン画像', dropLogo:'ロゴ', dropOrig:'オリジナルネックシール'}[pasteTarget] || 'デザイン画像';
+    setTimeout(() => status(`${label}に貼り付けました。`), 50);
+  });
   pick($('fileDesign'), $('dropDesign'), (img, n, url) => {
     designImg = img; isSample = false; designName = n; $('nameDesign').textContent = n; $('thumbDesign').src = url;
     const stem = n.replace(/\.[^.]+$/, ''); if (!$('name').value) $('name').value = stem;
@@ -998,6 +1027,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   });
   pick($('fileOrig'), $('dropOrig'), (img, n, url) => { origImg = trim(img); $('nameOrig').textContent = n; $('thumbOrig').src = url; $('origR').checked = true; });
   pick($('fileLogo'), $('dropLogo'), (img, n, url) => { logoImg = trim(img); $('nameLogo').textContent = n; $('thumbLogo').src = url; $('useLogo').checked = true; syncOutputs(); });
+  setPasteTarget('dropDesign');
 
   // ロゴの透明な余白を切り落とす
   function trim(img){
