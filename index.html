@@ -168,7 +168,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:25</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:30</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -313,7 +313,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
           <button id="dlPdf" type="button">提出用 PDF を保存</button>
           <button id="dlDesign" type="button">デザイン画像を保存</button>
           <button id="dlTag" type="button">タグ画像だけ保存</button>
-          <button class="primary alt" id="dlZip" type="button">まとめて保存（ZIP）</button>
+          <button class="primary alt" id="dlZip" type="button">まとめて保存（提出用＋デザイン画像）</button>
         </div>
         <div class="status" id="status" role="status"></div>
       </div>
@@ -1168,29 +1168,26 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       status(`この表示では保存ボタンが使えませんでした（${code}）。右のプレビュー画像を右クリック（スマホは長押し）して「画像を保存」してください。`, true);
     }
   }
-  $('dlJpg').addEventListener('click', async () => save(`提出用フォーマット_${fname()}.jpg`, await toBlob(out, 'image/jpeg', 0.92)));
-  $('dlDesign').addEventListener('click', async () => save(`${fname()}_デザイン.jpg`, await toBlob(designCanvas, 'image/jpeg', 0.95)));
+  $('dlJpg').addEventListener('click', async () => save(`${fname()}提出用.jpg`, await toBlob(out, 'image/jpeg', 0.92)));
+  $('dlDesign').addEventListener('click', async () => save(`${fname()}デザイン画像.jpg`, await toBlob(designCanvas, 'image/jpeg', 0.95)));
   $('dlPdf').addEventListener('click', async () => {
     if (!window.jspdf) { status('PDF の準備ができていません。少し待ってからもう一度押してください。', true); return; }
-    save(`提出用フォーマット_${fname()}.pdf`, makePdfBlob());
+    save(`${fname()}提出用.pdf`, makePdfBlob());
   });
   $('dlTag').addEventListener('click', async () => {
     const tc = buildTagCanvas();
     if (!tc) { status('タグが「なし」になっています。仕様の「タグ」でスクエア・ハート型・ボトル型を選んでください。', true); return; }
     const k = document.querySelector('input[name=tag]:checked').value;
-    save(`${fname()}_タグ_${TAGNAME[k]}.png`, await toBlob(tc, 'image/png'));
+    save(`${fname()}タグ_${TAGNAME[k]}.png`, await toBlob(tc, 'image/png'));
   });
   $('dlZip').addEventListener('click', async () => {
     if (isSample) { status('先にデザイン画像を選んでください（いまはサンプルです）。', true); return; }
-    if (!window.JSZip) { status('ZIP の準備ができていません。少し待ってからもう一度押してください。', true); return; }
-    status('まとめています…');
-    const z = new JSZip(), n = fname();
-    z.file(`提出用フォーマット_${n}.jpg`, await toBlob(out, 'image/jpeg', 0.92));
-    if (window.jspdf) z.file(`提出用フォーマット_${n}.pdf`, makePdfBlob());
-    z.file(`${n}_デザイン.jpg`, await toBlob(designCanvas, 'image/jpeg', 0.95));
-    const tc = buildTagCanvas();
-    if (tc) z.file(`${n}_タグ_${TAGNAME[document.querySelector('input[name=tag]:checked').value]}.png`, await toBlob(tc, 'image/png'));
-    save(`${n}_一式.zip`, await z.generateAsync({type:'blob'}));
+    const n = fname();
+    // 2つとも先に作っておき、続けて保存する
+    const [b1, b2] = await Promise.all([toBlob(out, 'image/jpeg', 0.92), toBlob(designCanvas, 'image/jpeg', 0.95)]);
+    await save(`${n}提出用.jpg`, b1);
+    await save(`${n}デザイン画像.jpg`, b2);
+    status(`${n}提出用.jpg と ${n}デザイン画像.jpg を保存しました。2つ目が保存されない場合は、ブラウザの「複数ファイルのダウンロード」を許可してください。`);
   });
 
   (async () => {
