@@ -131,6 +131,10 @@ button:disabled{opacity:.5;cursor:default}
 button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent2));color:#fff}
 .zoombtn{padding:5px 12px;font-size:12px;border-color:var(--accent3);color:var(--accent3)}
 .tiny{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}
+.cutbox:not([hidden]){display:flex;flex-direction:column;gap:8px}
+#cutSel,#cutPrev{width:100%;height:auto;border-radius:10px;border:1.5px solid var(--line);touch-action:none}
+#cutSel{cursor:crosshair}
+#cutPrev{cursor:copy;background:repeating-conic-gradient(#d9dbe3 0 25%,#fff 0 50%) 0 0/14px 14px}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -169,7 +173,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 20:50</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:10</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -299,6 +303,25 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
             <button type="button" id="tagRot">90°回転</button>
           </div>
           <div class="links"><button type="button" id="tagZoom" class="zoombtn">🔍 タグを拡大表示</button><button class="link" id="tagReset" type="button">位置を元に戻す</button><span class="note" id="rotOut"></span></div>
+          <h3>タグの文字を切り離す</h3>
+          <label class="check"><input type="checkbox" id="cutOn"> デザインから文字を切り出して、タグの上で別に動かす</label>
+          <div class="cutbox" id="cutBox" hidden>
+            <p class="tiny">① 下のデザインで、文字のまわりをドラッグして四角で囲んでください。</p>
+            <canvas id="cutSel" width="600" height="426" aria-label="切り出す範囲を選ぶ"></canvas>
+            <p class="tiny">② 切り出した文字（市松模様の部分が透明）。背景が残っているところをタップすると、その色も消えます。</p>
+            <canvas id="cutPrev" width="600" height="200" aria-label="切り出した文字"></canvas>
+            <div class="row"><label for="cutTol">背景の消し具合</label><input type="range" id="cutTol" min="0" max="160" step="1" value="45"><output id="cutTolOut">45</output></div>
+            <div class="row"><label for="cutSoft">ふちのなめらかさ</label><input type="range" id="cutSoft" min="0" max="100" step="1" value="40"><output id="cutSoftOut">40</output></div>
+            <label class="check"><input type="checkbox" id="cutHoles" checked> 文字のすき間（○の中など）の背景も消す</label>
+            <label class="check"><input type="checkbox" id="cutHide" checked> タグの中の元の文字を消す</label>
+            <div class="links"><button class="link" id="cutPickReset" type="button">タップで消した色をリセット</button></div>
+            <h3>文字の位置</h3>
+            <div class="row"><label for="cx">左右</label><input type="range" id="cx" min="-60" max="60" step="0.5" value="0"><output id="cxOut">0</output></div>
+            <div class="row"><label for="cy">上下</label><input type="range" id="cy" min="-60" max="60" step="0.5" value="0"><output id="cyOut">0</output></div>
+            <div class="row"><label for="cz">大きさ</label><input type="range" id="cz" min="20" max="300" step="1" value="100"><output id="czOut">100%</output></div>
+            <div class="row"><label for="cr">回転</label><input type="range" id="cr" min="-180" max="180" step="1" value="0"><output id="crOut">0°</output></div>
+            <div class="links"><button class="link" id="cutPosReset" type="button">文字の位置を元に戻す</button></div>
+          </div>
         </div>
         <h3>ボトル型タグのシール</h3>
         <div class="swatches" role="radiogroup" aria-label="ボトル型タグのシール">
@@ -880,10 +903,126 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     x.setLineDash([5,4]); x.lineWidth = 1.5; x.strokeStyle = '#fff'; x.strokeRect(SAFE.x*k, SAFE.y*k, SAFE.w*k, SAFE.h*k);
     x.setLineDash([5,4]); x.lineDashOffset = 5; x.strokeStyle = '#ff4f9a'; x.strokeRect(SAFE.x*k, SAFE.y*k, SAFE.w*k, SAFE.h*k); x.lineDashOffset = 0;
   }
+  // ===== タグの文字を切り出す =====
+  let cutRect = null;            // デザイン画像上の範囲（px）
+  let cutPicks = [];             // タップで追加した背景色
+  let cutImg = null, cutOrg = [0,0], tagDesign = null;   // 切り出した文字・その左上（デザイン px）・元の文字を消したデザイン
+  const cutOn = () => $('cutOn').checked && cutRect && cutRect.w > 4 && cutRect.h > 4;
+  function makeCut(){
+    cutImg = null; tagDesign = null; if (!cutOn()) return;
+    const W0 = designCanvas.width, H0 = designCanvas.height;
+    const r = {x: Math.max(0, Math.round(cutRect.x)), y: Math.max(0, Math.round(cutRect.y))};
+    r.w = Math.min(W0 - r.x, Math.round(cutRect.w)); r.h = Math.min(H0 - r.y, Math.round(cutRect.h));
+    const src = designCanvas.getContext('2d').getImageData(r.x, r.y, r.w, r.h), d = src.data, W = r.w, H = r.h, N = W*H;
+    // 背景の色：範囲のふちで「よく出てくる色」だけを使う（ふちにかかった文字の色は使わない）
+    const bins = new Map(); let total = 0;
+    const step = Math.max(1, Math.floor((2*(W+H)) / 800));
+    const addPx = (x, y) => { const i = (y*W+x)*4, key = (d[i]>>4) << 8 | (d[i+1]>>4) << 4 | (d[i+2]>>4);
+      const b = bins.get(key) || [0,0,0,0]; b[0] += d[i]; b[1] += d[i+1]; b[2] += d[i+2]; b[3]++; bins.set(key, b); total++; };
+    for (let x = 0; x < W; x += step) { addPx(x, 0); addPx(x, H-1); }
+    for (let y = 0; y < H; y += step) { addPx(0, y); addPx(W-1, y); }
+    const pal = [];
+    [...bins.values()].sort((a, b) => b[3] - a[3]).forEach((b, i) => { if (b[3] >= total*0.04 || i < 2) pal.push([b[0]/b[3], b[1]/b[3], b[2]/b[3]]); });
+    cutPicks.forEach(c => pal.push(c));
+    const tol = +$('cutTol').value, soft = Math.max(1, tol * (+$('cutSoft').value) / 100 * 1.5);
+    const dist = new Float32Array(N);
+    for (let k = 0; k < N; k++) {
+      const i = k*4; let m = 1e9;
+      for (const c of pal) { const dr = d[i]-c[0], dg = d[i+1]-c[1], db = d[i+2]-c[2]; const v = dr*dr + dg*dg + db*db; if (v < m) m = v; }
+      dist[k] = Math.sqrt(m);
+    }
+    // ふちから「背景に近い色」をたどって消す（つながった背景だけ）
+    const bg = new Uint8Array(N), q = new Int32Array(N); let qh = 0, qt = 0;
+    const push = k => { if (!bg[k] && dist[k] <= tol) { bg[k] = 1; q[qt++] = k; } };
+    for (let x = 0; x < W; x++) { push(x); push((H-1)*W + x); }
+    for (let y = 0; y < H; y++) { push(y*W); push(y*W + W-1); }
+    while (qh < qt) { const k = q[qh++], x = k % W, y = (k / W) | 0;
+      if (x > 0) push(k-1); if (x < W-1) push(k+1); if (y > 0) push(k-W); if (y < H-1) push(k+W); }
+    const holes = $('cutHoles').checked;
+    const out = new ImageData(W, H), od = out.data;
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let k = 0; k < N; k++) {
+      let a;
+      if (bg[k] || (holes && dist[k] <= tol)) a = 0;
+      else a = Math.min(1, (dist[k] - tol) / soft);
+      if (a <= 0.02) continue;
+      const i = k*4; od[i] = d[i]; od[i+1] = d[i+1]; od[i+2] = d[i+2]; od[i+3] = Math.round(a*255);
+      const x = k % W, y = (k / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 < 0) return;
+    const full = document.createElement('canvas'); full.width = W; full.height = H; full.getContext('2d').putImageData(out, 0, 0);
+    cutImg = document.createElement('canvas'); cutImg.width = x1-x0+1; cutImg.height = y1-y0+1;
+    cutImg.getContext('2d').drawImage(full, -x0, -y0);
+    cutOrg = [r.x + x0, r.y + y0];
+    // 元の文字をタグの中から消す：文字の部分をまわりの背景で埋める
+    if ($('cutHide').checked) {
+      const sc = Math.min(1, 360 / Math.max(W, H)), w = Math.max(2, Math.round(W*sc)), h = Math.max(2, Math.round(H*sc));
+      const sm = document.createElement('canvas'); sm.width = w; sm.height = h; const sx = sm.getContext('2d');
+      sx.drawImage(designCanvas, r.x, r.y, W, H, 0, 0, w, h);
+      const mk = document.createElement('canvas'); mk.width = w; mk.height = h; const mx = mk.getContext('2d');
+      mx.filter = 'blur(' + Math.max(1, 3*sc) + 'px)'; mx.drawImage(full, 0, 0, w, h); mx.filter = 'none';
+      const sd = sx.getImageData(0,0,w,h), px = sd.data, md2 = mx.getImageData(0,0,w,h).data;
+      const known = new Uint8Array(w*h); for (let k = 0; k < w*h; k++) known[k] = md2[k*4+3] < 8 ? 1 : 0;
+      for (let pass = 0; pass < 400; pass++) {
+        let changed = 0; const nk = known.slice();
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const k = y*w + x; if (known[k]) continue;
+          let rr = 0, gg = 0, bb = 0, n = 0;
+          for (const [ddx, ddy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]) {
+            const xx = x+ddx, yy = y+ddy; if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            const kk = yy*w + xx; if (!known[kk]) continue; const i = kk*4; rr += px[i]; gg += px[i+1]; bb += px[i+2]; n++;
+          }
+          if (n) { const i = k*4; px[i] = rr/n; px[i+1] = gg/n; px[i+2] = bb/n; nk[k] = 1; changed++; }
+        }
+        known.set(nk); if (!changed) break;
+      }
+      sx.putImageData(sd, 0, 0);
+      const fill = document.createElement('canvas'); fill.width = W; fill.height = H; const fx = fill.getContext('2d');
+      fx.filter = 'blur(' + Math.max(1, 2/sc) + 'px)'; fx.drawImage(sm, 0, 0, W, H); fx.filter = 'none';
+      fx.globalCompositeOperation = 'destination-in'; fx.filter = 'blur(' + Math.max(1, 3) + 'px)'; fx.drawImage(full, 0, 0); fx.filter = 'none';
+      fx.globalCompositeOperation = 'source-over';
+      tagDesign = document.createElement('canvas'); tagDesign.width = W0; tagDesign.height = H0;
+      const tx2 = tagDesign.getContext('2d'); tx2.drawImage(designCanvas, 0, 0);
+      for (let i = 0; i < 3; i++) tx2.drawImage(fill, r.x, r.y);
+    }
+  }
+  // 切り出した文字をタグの上に描く（toCv：PDF座標 → キャンバス座標）
+  const cutAdj = {x:0, y:0, z:1, r:0};
+  function drawTagText(ctx, tk, toCv){
+    if (!cutImg || !lastPL) return;
+    const idx = {tagbody:4, square:5, heart:6, cat:7, moon:8, bear:9}[tk]; if (idx == null) return;
+    const [a,b,c,d,e,f] = lastPL[idx], DWd = designCanvas.width, DHd = designCanvas.height;
+    const pdf = (ix, iy) => [e + a*ix/DWd + c*(1 - iy/DHd), f + b*ix/DWd + d*(1 - iy/DHd)];
+    const [rx, ry, rw, rh] = lastTagRect[tk];
+    const cx0 = cutOrg[0] + cutImg.width/2, cy0 = cutOrg[1] + cutImg.height/2, C = pdf(cx0, cy0);
+    const t = cutAdj.r * Math.PI/180, cs = Math.cos(t), sn = Math.sin(t);
+    const user = P => { const vx = (P[0]-C[0])*cutAdj.z, vy = (P[1]-C[1])*cutAdj.z;
+      return [C[0] + vx*cs + vy*sn + cutAdj.x/100*rw, C[1] - vx*sn + vy*cs + cutAdj.y/100*rh]; };
+    const M = (ix, iy) => toCv(user(pdf(cutOrg[0] + ix, cutOrg[1] + iy)));
+    const o = M(0,0), px = M(1,0), py = M(0,1);
+    ctx.save(); ctx.setTransform(px[0]-o[0], px[1]-o[1], py[0]-o[0], py[1]-o[1], o[0], o[1]);
+    ctx.imageSmoothingQuality = 'high'; ctx.drawImage(cutImg, 0, 0); ctx.restore();
+  }
+  function drawCutUI(){
+    const sel = $('cutSel'); if ($('cutBox').hidden || !designCanvas) return;
+    const k = sel.width / designCanvas.width; sel.height = Math.round(designCanvas.height * k);
+    const x = sel.getContext('2d'); x.drawImage(designCanvas, 0, 0, sel.width, sel.height);
+    if (cutRect) { x.fillStyle = 'rgba(6,10,31,.45)'; x.fillRect(0,0,sel.width,sel.height);
+      x.drawImage(designCanvas, cutRect.x, cutRect.y, cutRect.w, cutRect.h, cutRect.x*k, cutRect.y*k, cutRect.w*k, cutRect.h*k);
+      x.setLineDash([6,4]); x.lineWidth = 2; x.strokeStyle = '#38f0ff'; x.strokeRect(cutRect.x*k, cutRect.y*k, cutRect.w*k, cutRect.h*k); }
+    const pv = $('cutPrev'), px = pv.getContext('2d');
+    if (!cutImg) { pv.height = 120; px.clearRect(0,0,pv.width,pv.height); px.fillStyle = '#8890a8'; px.font = '22px sans-serif'; px.textAlign = 'center';
+      px.fillText(cutRect ? '文字が見つかりません。消し具合を下げてください' : 'まだ範囲が選ばれていません', pv.width/2, 66); return; }
+    const kk = Math.min(pv.width / cutImg.width, 260 / cutImg.height); pv.height = Math.max(60, Math.round(cutImg.height*kk) + 20);
+    px.clearRect(0,0,pv.width,pv.height); px.drawImage(cutImg, (pv.width - cutImg.width*kk)/2, 10, cutImg.width*kk, cutImg.height*kk);
+    pv._map = {k: kk, ox: (pv.width - cutImg.width*kk)/2, oy: 10};
+  }
   function compose(){
     designCanvas = buildDesign();
+    makeCut();
     drawSafePrev();
-    const D = designCanvas.getContext('2d').getImageData(0,0,designCanvas.width,designCanvas.height), dd = D.data, DW = D.width, DH = D.height;
+    const D = designCanvas.getContext('2d').getImageData(0,0,designCanvas.width,designCanvas.height), dd0 = D.data, DW = D.width, DH = D.height;
+    const ddT = tagDesign ? tagDesign.getContext('2d').getImageData(0,0,DW,DH).data : dd0;
     const o = new ImageData(new Uint8ClampedArray(base.data), OW, OH), od = o.data;
     let md = map.data;
     const tagK = document.querySelector('input[name=tag]:checked').value;
@@ -927,7 +1066,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         u = Math.min(1,Math.max(0,u))*DW-0.5; v = Math.min(1,Math.max(0,v))*DH-0.5;
         let x0 = Math.floor(u), y0 = Math.floor(v); const fx = u-x0, fy = v-y0;
         const x1 = Math.min(DW-1, Math.max(0,x0+1)), y1 = Math.min(DH-1, Math.max(0,y0+1)); x0 = Math.min(DW-1,Math.max(0,x0)); y0 = Math.min(DH-1,Math.max(0,y0));
-        const a = (y0*DW+x0)*4, b = (y0*DW+x1)*4, c = (y1*DW+x0)*4, d = (y1*DW+x1)*4, tt = t/255;
+        const a = (y0*DW+x0)*4, b = (y0*DW+x1)*4, c = (y1*DW+x0)*4, d = (y1*DW+x1)*4, tt = t/255, dd = md[i+1] > 4 ? ddT : dd0;
         for (let ch = 0; ch < 3; ch++) {
           const s = (dd[a+ch]*(1-fx)+dd[b+ch]*fx)*(1-fy) + (dd[c+ch]*(1-fx)+dd[d+ch]*fx)*fy;
           od[i+ch] = od[i+ch] + tt*s;
@@ -935,6 +1074,16 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }
     }
     octx.putImageData(o,0,0);
+    if (cutImg && tp) {
+      const [sx, sy] = TAGS[tagK], pw = tp.t.width, ph = tp.t.height;
+      const lay = document.createElement('canvas'); lay.width = pw; lay.height = ph; const lx = lay.getContext('2d');
+      drawTagText(lx, tagK, P => [P[0]*S - sx, (PH - P[1])*S - sy]);
+      const m = lx.createImageData(pw, ph); for (let i = 0; i < tp.t.data.length; i += 4) m.data[i+3] = tp.t.data[i];
+      const mc = document.createElement('canvas'); mc.width = pw; mc.height = ph; mc.getContext('2d').putImageData(m, 0, 0);
+      lx.globalCompositeOperation = 'destination-in'; lx.drawImage(mc, 0, 0);
+      octx.drawImage(lay, sx, sy);
+    }
+    drawCutUI();
     // 上に重なるレイヤー（ネック色 → ネックシール → デコ）
     const layers = [];
     if ($('showNote').checked) layers.push('note');
@@ -980,6 +1129,34 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('tagFlipY').addEventListener('click', () => { const a = curAdj(); if (a) { a.fy = !a.fy; syncTagAdj(); schedule(); } });
   $('tagRot').addEventListener('click', () => { const a = curAdj(); if (a) { a.r = (a.r + 270) % 360; syncTagAdj(); schedule(); } });
   $('tagZoom').addEventListener('click', () => { focusK = focusK === 'tag' ? 'all' : 'tag'; applyFocus(); $('tagZoom').textContent = focusK === 'tag' ? '🔍 全体表示に戻す' : '🔍 タグを拡大表示'; });
+  // 切り出し範囲をドラッグで選ぶ
+  (() => {
+    const sel = $('cutSel'); let st = null;
+    const toD = e => { const r = sel.getBoundingClientRect(), k = designCanvas.width / r.width; return [(e.clientX - r.left)*k, (e.clientY - r.top)*k]; };
+    sel.addEventListener('pointerdown', e => { st = toD(e); sel.setPointerCapture(e.pointerId); e.preventDefault(); });
+    sel.addEventListener('pointermove', e => { if (!st) return; const p = toD(e);
+      cutRect = {x: Math.min(st[0], p[0]), y: Math.min(st[1], p[1]), w: Math.abs(p[0]-st[0]), h: Math.abs(p[1]-st[1])}; drawCutUI(); });
+    sel.addEventListener('pointerup', () => { if (!st) return; st = null; cutPicks = []; Object.assign(cutAdj, {x:0,y:0,z:1,r:0}); syncCut(); schedule(); });
+    $('cutPrev').addEventListener('click', e => {
+      const pv = $('cutPrev'), m = pv._map; if (!cutImg || !m || !cutRect) return;
+      const r = pv.getBoundingClientRect(), k = pv.width / r.width, x = ((e.clientX - r.left)*k - m.ox)/m.k, y = ((e.clientY - r.top)*k - m.oy)/m.k;
+      const dx = Math.round(cutOrg[0] + x), dy = Math.round(cutOrg[1] + y);
+      const c = designCanvas.getContext('2d').getImageData(dx, dy, 1, 1).data; cutPicks.push([c[0], c[1], c[2]]); schedule();
+    });
+  })();
+  function syncCut(){
+    $('cutBox').hidden = !$('cutOn').checked;
+    $('cutTolOut').value = $('cutTol').value; $('cutSoftOut').value = $('cutSoft').value;
+    $('cx').value = cutAdj.x; $('cy').value = cutAdj.y; $('cz').value = Math.round(cutAdj.z*100); $('cr').value = cutAdj.r;
+    $('cxOut').value = cutAdj.x; $('cyOut').value = cutAdj.y; $('czOut').value = Math.round(cutAdj.z*100) + '%'; $('crOut').value = cutAdj.r + '°';
+  }
+  $('cutOn').addEventListener('change', () => { syncCut(); if ($('cutOn').checked) { focusK = 'tag'; applyFocus(); } schedule(); setTimeout(drawCutUI, 0); });
+  ['cutTol','cutSoft'].forEach(id => $(id).addEventListener('input', () => { syncCut(); schedule(); }));
+  ['cutHoles','cutHide'].forEach(id => $(id).addEventListener('change', schedule));
+  $('cutPickReset').addEventListener('click', () => { cutPicks = []; schedule(); });
+  ['cx','cy','cz','cr'].forEach(id => $(id).addEventListener('input', () => {
+    cutAdj.x = +$('cx').value; cutAdj.y = +$('cy').value; cutAdj.z = (+$('cz').value)/100; cutAdj.r = +$('cr').value; syncCut(); schedule(); }));
+  $('cutPosReset').addEventListener('click', () => { Object.assign(cutAdj, {x:0,y:0,z:1,r:0}); syncCut(); schedule(); });
   $('tagReset').addEventListener('click', () => { const a = tagAdj[document.querySelector('input[name=tag]:checked').value]; if (a) { Object.assign(a, ADJ0()); syncTagAdj(); schedule(); } });
   ['decoNeck','decoChira','showNote'].forEach(id => $(id).addEventListener('change', schedule));
   function syncDesignAdj(){
@@ -1135,7 +1312,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
     x.imageSmoothingQuality = 'high'; x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
     x.setTransform(s*a/DWd, -s*b/DWd, -s*c/DHd, s*d/DHd, s*(e - rx + c), s*(ry + rh - f - d));
-    x.drawImage(designCanvas, 0, 0); x.setTransform(1,0,0,1,0,0);
+    x.drawImage(tagDesign || designCanvas, 0, 0); x.setTransform(1,0,0,1,0,0);
+    drawTagText(x, k, P => [(P[0] - rx)*s, (ry + rh - P[1])*s]);
     // タグの形（提出用フォーマット上の透過マップ）で切り抜く
     const t = tags[k].t, [px, py] = TAGS[k], m = document.createElement('canvas'); m.width = t.width; m.height = t.height;
     const mx = m.getContext('2d'), md = mx.createImageData(t.width, t.height);
