@@ -106,7 +106,8 @@ button:disabled{opacity:.5;cursor:default}
 .prompt:not([hidden]){display:flex;flex-direction:column;gap:8px}
 .howto{margin:0;padding-left:1.3em;font-size:12.5px;display:flex;flex-direction:column;gap:4px}
 .howto a{color:var(--accent);font-weight:700}
-.resizechk{font-weight:700}
+.prompt-lead{margin:0;font-size:13px;font-weight:700;line-height:1.6}
+.prompt-lead a{color:var(--accent)}
 .prompt summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--accent)}
 .prompt[open]{display:flex;flex-direction:column;gap:8px}
 .prompt textarea{font:12px/1.5 var(--f-body);color:var(--fg);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px;width:100%;box-sizing:border-box;resize:vertical}
@@ -159,15 +160,9 @@ button:disabled{opacity:.5;cursor:default}
           <input type="file" id="fileDesign" accept="image/*">
         </label>
         <p class="note" id="sizeInfo">印刷用デザインは 3307×2347px（横1.41 : 縦1）で作ります。</p>
-        <label class="check resizechk"><input type="checkbox" id="useResize"> リサイズする（ChatGPTで生成）</label>
-        <div class="prompt" id="resizePanel" hidden>
-          <p class="note">正面デザインを、ボトル一周分（3307×2347px）の横長デザインにChatGPTで広げます。</p>
-          <ol class="howto">
-            <li>下の「プロンプトをコピー」を押す</li>
-            <li><a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a> を開き、元のデザイン画像を添付してプロンプトを貼り付けて送る</li>
-            <li>できた画像を保存して、上の「デザイン画像」の枠に入れ直す</li>
-          </ol>
-          <textarea id="promptText" readonly rows="6" aria-label="ChatGPT用プロンプト"></textarea>
+        <div class="prompt" id="resizePanel">
+          <p class="prompt-lead">リサイズする場合は、このプロンプトをコピーして<a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>で生成してください。</p>
+          <textarea id="promptText" readonly rows="5" aria-label="ChatGPT用プロンプト"></textarea>
           <button type="button" class="primary" id="copyPrompt">プロンプトをコピー</button>
         </div>
         <div id="resizeDev" class="devblock" hidden>
@@ -954,7 +949,6 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   // リサイズ機能は開発中：URLの最後に #dev を付けたときだけ表示
   if (location.hash === '#dev') $('resizeDev').hidden = false;
   $('promptText').value = AI_PROMPT;
-  $('useResize').addEventListener('change', () => { $('resizePanel').hidden = !$('useResize').checked; });
   $('copyPrompt').addEventListener('click', () => {
     const done = () => status('プロンプトをコピーしました。');
     try { navigator.clipboard.writeText(AI_PROMPT).then(done, () => { $('promptText').select(); status('文字を選択しました。コピーしてください。'); }); }
