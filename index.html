@@ -129,6 +129,7 @@ button:disabled{opacity:.5;cursor:default}
 .drop.target{border-color:var(--accent3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 25%,transparent)}
 .ver{margin-left:10px;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid rgba(0,229,255,.5);color:#7ff3ff;white-space:nowrap}
 button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent2));color:#fff}
+.zoombtn{padding:5px 12px;font-size:12px;border-color:var(--accent3);color:var(--accent3)}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -167,7 +168,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:20b</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:25</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -287,13 +288,13 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
           <h3>タグ内の画像の位置</h3>
           <div class="row"><label for="tx">左右</label><input type="range" id="tx" min="-50" max="50" step="1" value="0"><output id="txOut">0</output></div>
           <div class="row"><label for="ty">上下</label><input type="range" id="ty" min="-50" max="50" step="1" value="0"><output id="tyOut">0</output></div>
-          <div class="row"><label for="tz">拡大</label><input type="range" id="tz" min="100" max="300" step="5" value="100"><output id="tzOut">100%</output></div>
+          <div class="row"><label for="tz">大きさ</label><input type="range" id="tz" min="10" max="150" step="1" value="50"><output id="tzOut">50%</output></div>
           <div class="flips">
             <button type="button" id="tagFlipX" aria-pressed="false">左右反転</button>
             <button type="button" id="tagFlipY" aria-pressed="false">上下反転</button>
             <button type="button" id="tagRot">90°回転</button>
           </div>
-          <div class="links"><button class="link" id="tagReset" type="button">位置を元に戻す</button><span class="note" id="rotOut"></span></div>
+          <div class="links"><button type="button" id="tagZoom" class="zoombtn">🔍 タグを拡大表示</button><button class="link" id="tagReset" type="button">位置を元に戻す</button><span class="note" id="rotOut"></span></div>
         </div>
         <h3>ボトル型タグのシール</h3>
         <div class="swatches" role="radiogroup" aria-label="ボトル型タグのシール">
@@ -770,7 +771,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   function syncTagAdj(){
     const k = document.querySelector('input[name=tag]:checked').value, a = tagAdj[k];
     $('tagAdj').hidden = !a;
-    if (a) { $('tx').value = a.x; $('ty').value = -a.y; $('tz').value = Math.round(a.z*100); }
+    if (a) { $('tx').value = a.x; $('ty').value = -a.y; $('tz').value = Math.round(a.z*50); }
     if (a) { $('tagFlipX').setAttribute('aria-pressed', String(a.fx)); $('tagFlipY').setAttribute('aria-pressed', String(a.fy)); $('rotOut').textContent = a.r ? `回転 ${a.r}°` : ''; }
     $('txOut').value = $('tx').value; $('tyOut').value = $('ty').value; $('tzOut').value = $('tz').value + '%';
   }
@@ -917,6 +918,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const p = inv[md[i+1]-1]; if (!p) continue;
         const X = (px+0.5)/S - p.e, Y = yp - p.f;
         let u = (p.d*X - p.c*Y)/p.det, v = 1 - (-p.b*X + p.a*Y)/p.det;
+        if (md[i+1] > 4 && (u < -0.002 || u > 1.002 || v < -0.002 || v > 1.002)) { const tt = t/255; od[i] += tt*255; od[i+1] += tt*255; od[i+2] += tt*255; continue; }
         u = Math.min(1,Math.max(0,u))*DW-0.5; v = Math.min(1,Math.max(0,v))*DH-0.5;
         let x0 = Math.floor(u), y0 = Math.floor(v); const fx = u-x0, fy = v-y0;
         const x1 = Math.min(DW-1, Math.max(0,x0+1)), y1 = Math.min(DH-1, Math.max(0,y0+1)); x0 = Math.min(DW-1,Math.max(0,x0)); y0 = Math.min(DH-1,Math.max(0,y0));
@@ -966,12 +968,13 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   document.querySelectorAll('input[name=tag]').forEach(r => r.addEventListener('change', () => { syncTagAdj(); schedule(); }));
   ['tx','ty','tz'].forEach(id => $(id).addEventListener('input', () => {
     const a = tagAdj[document.querySelector('input[name=tag]:checked').value]; if (!a) return;
-    a.x = +$('tx').value; a.y = -(+$('ty').value); a.z = (+$('tz').value)/100; syncTagAdj(); schedule();
+    a.x = +$('tx').value; a.y = -(+$('ty').value); a.z = (+$('tz').value)/50; syncTagAdj(); schedule();
   }));
   const curAdj = () => tagAdj[document.querySelector('input[name=tag]:checked').value];
   $('tagFlipX').addEventListener('click', () => { const a = curAdj(); if (a) { a.fx = !a.fx; syncTagAdj(); schedule(); } });
   $('tagFlipY').addEventListener('click', () => { const a = curAdj(); if (a) { a.fy = !a.fy; syncTagAdj(); schedule(); } });
   $('tagRot').addEventListener('click', () => { const a = curAdj(); if (a) { a.r = (a.r + 270) % 360; syncTagAdj(); schedule(); } });
+  $('tagZoom').addEventListener('click', () => { focusK = focusK === 'tag' ? 'all' : 'tag'; applyFocus(); $('tagZoom').textContent = focusK === 'tag' ? '🔍 全体表示に戻す' : '🔍 タグを拡大表示'; });
   $('tagReset').addEventListener('click', () => { const a = tagAdj[document.querySelector('input[name=tag]:checked').value]; if (a) { Object.assign(a, ADJ0()); syncTagAdj(); schedule(); } });
   ['decoNeck','decoChira','showNote'].forEach(id => $(id).addEventListener('change', schedule));
   function syncDesignAdj(){
@@ -1099,7 +1102,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     [out, $('outImg')].forEach(el => { el.style.width = Math.round(OW*sc) + 'px'; el.style.maxWidth = 'none'; el.style.maxHeight = 'none'; });
     v.scrollTo({left: (r[0]+r[2])/2*sc - vw/2, top: (r[1]+r[3])/2*sc - vh/2});
   }
-  document.querySelectorAll('[data-focus]').forEach(b => b.addEventListener('click', () => { focusK = b.dataset.focus; applyFocus(); }));
+  document.querySelectorAll('[data-focus]').forEach(b => b.addEventListener('click', () => { focusK = b.dataset.focus; applyFocus(); $('tagZoom').textContent = focusK === 'tag' ? '🔍 全体表示に戻す' : '🔍 タグを拡大表示'; }));
   addEventListener('resize', () => { if (focusK !== 'all') applyFocus(); });
   // スマホ：各ステップを見出しで開け閉めできるようにする
   const mq = matchMedia('(max-width: 860px)');
@@ -1123,7 +1126,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const [rx, ry, rw, rh] = lastTagRect[k], [a,b,c,d,e,f] = lastPL[idx], DWd = designCanvas.width, DHd = designCanvas.height;
     const s = 1600 / Math.max(rw, rh), W = Math.round(rw*s), H = Math.round(rh*s);
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
-    x.imageSmoothingQuality = 'high';
+    x.imageSmoothingQuality = 'high'; x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
     x.setTransform(s*a/DWd, -s*b/DWd, -s*c/DHd, s*d/DHd, s*(e - rx + c), s*(ry + rh - f - d));
     x.drawImage(designCanvas, 0, 0); x.setTransform(1,0,0,1,0,0);
     // タグの形（提出用フォーマット上の透過マップ）で切り抜く
