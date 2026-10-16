@@ -98,6 +98,7 @@ button:disabled{opacity:.5;cursor:default}
 .flips{display:flex;flex-wrap:wrap;gap:8px}
 .flips button{flex:1;min-width:0;padding:7px 8px;font-size:12.5px}
 .flips button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.devblock:not([hidden]){display:flex;flex-direction:column;gap:8px;border:2px dashed var(--accent2);border-radius:16px;padding:10px}
 .safeprev{margin:4px 0 0;display:flex;flex-direction:column;gap:6px}
 .safeprev canvas{width:100%;height:auto;border-radius:12px;border:2px solid var(--line);background:var(--bg)}
 .safeprev figcaption{font-size:11.5px;color:var(--muted);line-height:1.5}
@@ -154,6 +155,7 @@ button:disabled{opacity:.5;cursor:default}
           <input type="file" id="fileDesign" accept="image/*">
         </label>
         <p class="note" id="sizeInfo">印刷用デザインは 3307×2347px（横1.41 : 縦1）で作ります。</p>
+        <div id="resizeDev" class="devblock" hidden>
         <h3>リサイズ（フォーマットに合わせる）</h3>
         <div class="swatches wide" role="radiogroup" aria-label="合わせ方">
           <label class="sw"><input type="radio" name="fit" value="cover" checked>いっぱいに（はみ出しカット）</label>
@@ -176,6 +178,7 @@ button:disabled{opacity:.5;cursor:default}
           <textarea id="promptText" readonly rows="8"></textarea>
           <button type="button" id="copyPrompt">プロンプトをコピー</button>
         </details>
+        </div>
       </div>
 
       <div class="step">
@@ -939,6 +942,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   }
   ['dz','dx','dy','padColor'].forEach(id => $(id).addEventListener('input', () => { syncDesignAdj(); schedule(); }));
   document.querySelectorAll('input[name=fit]').forEach(r => r.addEventListener('change', () => { syncDesignAdj(); schedule(); }));
+  // リサイズ機能は開発中：URLの最後に #dev を付けたときだけ表示
+  if (location.hash === '#dev') $('resizeDev').hidden = false;
   $('promptText').value = AI_PROMPT;
   $('copyPrompt').addEventListener('click', () => {
     const done = () => status('プロンプトをコピーしました。');
