@@ -190,7 +190,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:50</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 22:00</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -320,8 +320,10 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
             <button type="button" id="tagRot">90°回転</button>
           </div>
           <div class="links"><button type="button" id="tagZoom" class="zoombtn">🔍 タグを拡大表示</button><button class="link" id="tagReset" type="button">位置を元に戻す</button><span class="note" id="rotOut"></span></div>
+          <div id="cutFeature" hidden>
           <h3>タグの文字を切り離す</h3>
           <label class="check"><input type="checkbox" id="cutOn"> デザインから文字を切り出して、タグの上で別に動かす</label>
+          </div>
           <div class="cutbox" id="cutBox" hidden>
             <button type="button" class="primary" id="cutOpen">✂️ 文字の切り出し画面を開く</button>
             <canvas id="cutThumb" width="600" height="160" aria-label="切り出した文字"></canvas>
@@ -940,7 +942,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
   ['dz','dx','dy','padColor'].forEach(id => $(id).addEventListener('input', () => { syncDesignAdj(); schedule(); }));
   document.querySelectorAll('input[name=fit]').forEach(r => r.addEventListener('change', () => { syncDesignAdj(); schedule(); }));
   // リサイズ機能は開発中：URLの最後に #dev を付けたときだけ表示
-  if (location.hash === '#dev') $('resizeDev').hidden = false;
+  if (location.hash === '#dev') { $('resizeDev').hidden = false; $('cutFeature').hidden = false; }
   $('promptText').value = AI_PROMPT;
   $('copyPrompt').addEventListener('click', () => {
     const done = () => status('プロンプトをコピーしました。');
