@@ -121,7 +121,11 @@ button:disabled{opacity:.5;cursor:default}
 .prompt summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--accent)}
 .prompt[open]{display:flex;flex-direction:column;gap:8px}
 .prompt textarea{font:12px/1.5 var(--f-body);color:var(--fg);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px;width:100%;box-sizing:border-box;resize:vertical}
-.pastebtn{align-self:flex-start;margin-top:6px;padding:4px 12px;font-size:12px;border-radius:999px}
+.pasterow{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+.pastebtn{padding:4px 12px;font-size:12px;border-radius:999px;flex:none}
+.pastezone{flex:1;min-width:140px;min-height:28px;display:flex;align-items:center;padding:4px 10px;font-size:11.5px;color:var(--muted);border:1.5px dashed var(--accent3);border-radius:10px;background:color-mix(in srgb,var(--accent3) 8%,transparent);cursor:text;outline:none;-webkit-user-select:text;user-select:text}
+.pastezone:focus{color:var(--fg);border-style:solid;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 30%,transparent)}
+.pastezone:focus:empty::before{content:"Ctrl+V / ⌘+V で貼り付け";color:var(--muted)}
 .drop.target{border-color:var(--accent3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 25%,transparent)}
 .mobilebar{display:none}
 @media (max-width:860px){
@@ -1005,20 +1009,47 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
         status('クリップボードに画像がありません。画像をコピーしてからもう一度押してください。', true);
       } catch (err) { status('このボタンが使えない環境です。Ctrl+V（Macは⌘+V）で貼り付けてください。', true); }
     });
-    drop.querySelector('.t').appendChild(btn);
+    const zone = document.createElement('span'); zone.className = 'pastezone'; zone.contentEditable = 'true'; zone.setAttribute('role','textbox');
+    zone.dataset.label = 'ここを押して貼り付け（長押し→ペースト）'; zone.textContent = zone.dataset.label; zone.setAttribute('aria-label','画像の貼り付け先');
+    zone.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); setPasteTarget(drop.id); });
+    zone.addEventListener('focus', () => { setPasteTarget(drop.id); zone.textContent = ''; });
+    zone.addEventListener('blur', () => { zone.textContent = zone.dataset.label; });
+    zone.addEventListener('input', () => { zone.textContent = ''; });
+    zone.addEventListener('keydown', e => { if (!(e.ctrlKey || e.metaKey)) e.preventDefault(); });
+    const row = document.createElement('span'); row.className = 'pasterow'; row.append(zone, btn);
+    drop.querySelector('.t').appendChild(row);
   }
   function setPasteTarget(id){ pasteTarget = id; document.querySelectorAll('.drop').forEach(d => d.classList.toggle('target', d.id === id)); }
-  document.addEventListener('paste', e => {
-    const tag = (e.target && e.target.tagName) || '';
-    const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
-    if (!files.length) return;
-    if (tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type === 'text')) return;
-    e.preventDefault();
-    const f = files[0], named = new File([f], f.name && f.name !== 'image.png' ? f.name : 'pasted.png', {type: f.type});
+  // クリップボードの中から画像を取り出す（ファイル・画像データ・HTML内の画像のどれでも）
+  async function imageFromClipboard(cd){
+    if (!cd) return null;
+    for (const it of [...(cd.items || [])]) {
+      if (it.kind === 'file' && it.type.startsWith('image/')) { const f = it.getAsFile(); if (f) return f; }
+    }
+    const f = [...(cd.files || [])].find(f => f.type.startsWith('image/')); if (f) return f;
+    const html = cd.getData && cd.getData('text/html');
+    const src = html && (html.match(/<img[^>]+src=["']([^"']+)["']/i) || [])[1];
+    const url = src || (cd.getData && cd.getData('text/plain') || '').trim();
+    if (/^(data:image\/|https?:\/\/\S+\.(png|jpe?g|webp|gif)(\?|$))/i.test(url)) {
+      try { const r = await fetch(url); const bl = await r.blob(); if (bl.type.startsWith('image/')) return new File([bl], 'pasted.' + (bl.type.split('/')[1] || 'png'), {type: bl.type}); } catch (e) {}
+    }
+    return null;
+  }
+  const onPaste = async e => {
+    const t = e.target, tag = (t && t.tagName) || '';
+    const inZone = t && t.closest && t.closest('.pastezone');
+    if (!inZone && (tag === 'TEXTAREA' || (tag === 'INPUT' && t.type === 'text'))) return;
+    if (e.__done) return; e.__done = true;
+    const cd = e.clipboardData; e.preventDefault();
+    const f = await imageFromClipboard(cd);
+    if (inZone) inZone.textContent = inZone.dataset.label;
+    if (!f) { status('クリップボードに画像がありませんでした。画像そのものをコピー（右クリック→「画像をコピー」など）してから貼り付けてください。', true); return; }
+    const named = new File([f], f.name && f.name !== 'image.png' ? f.name : 'pasted.png', {type: f.type});
     (pasteTargets[pasteTarget] || pasteTargets.dropDesign)(named);
     const label = {dropDesign:'デザイン画像', dropLogo:'ロゴ', dropOrig:'オリジナルネックシール'}[pasteTarget] || 'デザイン画像';
     setTimeout(() => status(`${label}に貼り付けました。`), 50);
-  });
+  };
+  window.addEventListener('paste', onPaste, true);
   pick($('fileDesign'), $('dropDesign'), (img, n, url) => {
     designImg = img; isSample = false; designName = n; $('nameDesign').textContent = n; $('thumbDesign').src = url;
     const stem = n.replace(/\.[^.]+$/, ''); if (!$('name').value) $('name').value = stem;
