@@ -2,33 +2,53 @@
 <title>ボトルラベル提出フォーマット</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
 /* Layout: 左に操作パネル、右に提出用フォーマットの大きなプレビュー。狭い画面では縦に積む */
 :root{
-  --bg:#eef0f3; --panel:#ffffff; --fg:#1d2026; --muted:#5d6470; --line:#d7dbe2;
-  --accent:#a8842f; --accent-ink:#ffffff; --accent-soft:#f3ecd9; --warn:#a14a1f;
-  --f-display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --bg:#fff0f6; --bg2:#eaf3ff; --bg3:#fff8e1; --dot:rgba(255,105,170,.14); --dot2:rgba(120,170,255,.16);
+  --panel:#ffffff; --fg:#2a2233; --muted:#7a6c86; --line:#f1d6e5;
+  --accent:#ff4f9a; --accent-ink:#ffffff; --accent-soft:#ffe3f0; --accent2:#7c6cff; --accent3:#ffc93c; --warn:#d0413a;
+  --shadow:0 10px 30px rgba(255,79,154,.14);
+  --f-display:"Mochiy Pop One","Zen Kaku Gothic New","Hiragino Sans",sans-serif;
   --f-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#15171b; --panel:#1f2228; --fg:#e8eaee; --muted:#9aa1ad; --line:#343944;
-  --accent:#d2ad55; --accent-ink:#1a1408; --accent-soft:#2e2715; --warn:#e48a5c; color-scheme:dark}}
+  --bg:#2a1630; --bg2:#16203a; --bg3:#2d2414; --dot:rgba(255,105,170,.18); --dot2:rgba(120,170,255,.16);
+  --panel:#231b2b; --fg:#f6eef8; --muted:#bfaecb; --line:#4a3456;
+  --accent:#ff6fae; --accent-ink:#1d0f17; --accent-soft:#4a2338; --accent2:#a89bff; --accent3:#ffd45e; --warn:#ff8a7a;
+  --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#15171b; --panel:#1f2228; --fg:#e8eaee; --muted:#9aa1ad; --line:#343944;
-  --accent:#d2ad55; --accent-ink:#1a1408; --accent-soft:#2e2715; --warn:#e48a5c; color-scheme:dark}
-body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.6}
+  --bg:#2a1630; --bg2:#16203a; --bg3:#2d2414; --dot:rgba(255,105,170,.18); --dot2:rgba(120,170,255,.16);
+  --panel:#231b2b; --fg:#f6eef8; --muted:#bfaecb; --line:#4a3456;
+  --accent:#ff6fae; --accent-ink:#1d0f17; --accent-soft:#4a2338; --accent2:#a89bff; --accent3:#ffd45e; --warn:#ff8a7a;
+  --shadow:0 10px 30px rgba(0,0,0,.35); color-scheme:dark}
+body{color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.6;min-height:100vh;
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(circle at 12px 12px, var(--dot) 5px, transparent 6px),
+    radial-gradient(circle at 36px 36px, var(--dot2) 3px, transparent 4px),
+    radial-gradient(1200px 600px at 0% 0%, var(--bg) 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 10%, var(--bg2) 0%, transparent 60%),
+    radial-gradient(900px 700px at 50% 100%, var(--bg3) 0%, transparent 60%);
+  background-size:48px 48px,48px 48px,auto,auto,auto;
+  background-attachment:fixed}
 .wrap{max-width:1280px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin-bottom:20px}
-h1{font-family:var(--f-display);font-weight:600;font-size:26px;margin:0;letter-spacing:.04em;text-wrap:balance}
+h1{font-family:var(--f-display);font-weight:400;font-size:28px;margin:0;letter-spacing:.04em;text-wrap:balance;background:linear-gradient(90deg,var(--accent),var(--accent2) 55%,var(--accent3));-webkit-background-clip:text;background-clip:text;color:transparent}
+h1::before{content:"🍾 ";-webkit-text-fill-color:initial}
 header p{margin:0;color:var(--muted)}
 .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:18px}
+.panel{background:var(--panel);border:2px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:18px}
 .step{display:flex;flex-direction:column;gap:8px}
 .step h2{font-size:13px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
-.step h2 .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:12px}
-.drop{border:1.5px dashed var(--line);border-radius:8px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;min-height:64px}
+.step h2{font-size:14px}
+.step h2 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-family:var(--f-display)}
+.step:nth-child(2) h2 .n{background:var(--accent2)}
+.step:nth-child(3) h2 .n{background:var(--accent3);color:#3a2a00}
+.step:nth-child(4) h2 .n{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.drop{border:2px dashed var(--line);border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;min-height:64px}
 .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
 .drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
 .drop img{width:72px;height:50px;object-fit:contain;background:repeating-conic-gradient(var(--line) 0 25%,transparent 0 50%) 0 0/10px 10px;border-radius:4px;flex:none}
@@ -45,16 +65,16 @@ header p{margin:0;color:var(--muted)}
 input[type=text]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;width:100%;box-sizing:border-box}
 input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px}
 .btns{display:flex;flex-direction:column;gap:8px}
-button{font:inherit;font-weight:500;border-radius:7px;padding:9px 12px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
-button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button{font:inherit;font-weight:500;border-radius:999px;padding:9px 12px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(255,79,154,.3)}
 button:hover{filter:brightness(1.05)}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button:disabled{opacity:.5;cursor:default}
 .link{background:none;border:none;padding:0;color:var(--accent);font-size:12px;text-decoration:underline;align-self:flex-start}
 .swatches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.sw{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:7px;padding:7px 10px;cursor:pointer;font-size:13px}
+.sw{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:14px;background:var(--panel);padding:7px 10px;cursor:pointer;font-size:13px}
 .sw input{position:absolute;opacity:0;width:1px;height:1px}
-.sw:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.sw:has(input:checked){border-color:var(--accent);background:var(--accent-soft);box-shadow:0 3px 10px rgba(255,79,154,.18);transform:translateY(-1px)}
 .sw:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .step h3{font-size:12px;font-weight:500;color:var(--muted);margin:6px 0 0}
 .sw input[type=color]{width:24px;height:18px;padding:0;border:1px solid var(--line);border-radius:3px;background:none;flex:none;cursor:pointer}
@@ -63,16 +83,16 @@ button:disabled{opacity:.5;cursor:default}
 .note{font-size:12px;color:var(--muted);margin:0}
 .status{font-size:12px;min-height:1.6em;color:var(--muted)}
 .status.err{color:var(--warn)}
-.stage{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);box-sizing:border-box}
+.stage{background:var(--panel);border:2px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);box-sizing:border-box}
 /* スマホ等：プレビューを上に固定し、操作欄をその下でスクロール */
 @media (max-width:860px){.stage{order:-1;top:env(safe-area-inset-top,0px);max-height:48vh;z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.12)}.stage .note{display:none}}
 .stage-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
 .badge{font-size:12px;padding:2px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:500}
 .badge[data-k="ok"]{background:transparent;border:1px solid var(--line);color:var(--muted)}
-.seg{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg{display:flex;border:1.5px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
 .seg button{border:none;border-radius:0;padding:5px 12px;font-size:12px}
-.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
-.view{overflow:auto;border-radius:6px;background:var(--bg);min-height:0;flex:1}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.view{overflow:auto;border-radius:14px;background:var(--bg);min-height:0;flex:1}
 .flips{display:flex;flex-wrap:wrap;gap:8px}
 .flips button{flex:1;min-width:0;padding:7px 8px;font-size:12.5px}
 .flips button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
@@ -715,7 +735,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     for (let yy = 40; yy < H; yy += 120) for (let xx = (yy/120%2)*60 + 40; xx < W; xx += 120) { x.beginPath(); x.arc(xx,yy,14,0,Math.PI*2); x.fill(); }
     x.fillStyle = 'rgba(255,255,255,.85)'; x.beginPath(); x.arc(W/2,H/2-30,240,0,Math.PI*2); x.fill();
     x.fillStyle = '#7d93a0'; x.textAlign = 'center';
-    x.font = '600 64px "Shippori Mincho", serif'; x.fillText('SAMPLE', W/2, H/2-40);
+    x.font = '64px "Mochiy Pop One", sans-serif'; x.fillText('SAMPLE', W/2, H/2-40);
     x.font = '500 30px "Zen Kaku Gothic New", sans-serif'; x.fillText('ここにデザイン画像が入ります', W/2, H/2+20);
     return c;
   }
