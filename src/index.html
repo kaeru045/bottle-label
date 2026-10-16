@@ -146,6 +146,11 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 #cutSel,#cutPrev{display:block;width:100%;height:auto;touch-action:none}
 #cutPrev{max-height:58vh;object-fit:contain}
 .cm-tools{display:flex;flex-wrap:wrap;gap:8px}
+#cutPrevWrap{position:relative}
+#brushRing{position:absolute;left:0;top:0;pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);
+  border:2px solid #fff;box-shadow:0 0 0 2px #ff2f6d,inset 0 0 0 1px rgba(0,0,0,.35);background:rgba(255,47,109,.18)}
+#brushRing.restore{box-shadow:0 0 0 2px #19c37d,inset 0 0 0 1px rgba(0,0,0,.35);background:rgba(25,195,125,.18)}
+#cutPrev.brushing{cursor:none}
 .cm-sliders .row label{width:110px}
 .mobilebar{display:none}
 @media (max-width:860px){
@@ -185,7 +190,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:40</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:50</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -394,7 +399,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
         </div>
       </div>
       <p class="tiny" id="cutHint"></p>
-      <div class="cm-canvaswrap check"><canvas id="cutPrev" width="1200" height="400" aria-label="切り出した文字"></canvas></div>
+      <div class="cm-canvaswrap check" id="cutPrevWrap"><canvas id="cutPrev" width="1200" height="400" aria-label="切り出した文字"></canvas><div id="brushRing" hidden></div></div>
       <div class="cm-sliders">
         <div class="row"><label for="cutTol">消し具合</label><input type="range" id="cutTol" min="0" max="160" step="1" value="45"><output id="cutTolOut">45</output></div>
         <div class="row"><label for="cutSoft">ふちのなめらかさ</label><input type="range" id="cutSoft" min="0" max="100" step="1" value="40"><output id="cutSoftOut">40</output></div>
@@ -886,11 +891,22 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     pv.addEventListener('pointermove', e => { if (!painting) return; const p = toC(e); if (p) { paint(p); quickCut(); } });
     const end = () => { if (painting) schedule(); painting = false; last = null; };
     pv.addEventListener('pointerup', end); pv.addEventListener('pointercancel', end);
+    // 消しゴム・戻すの位置と大きさが分かる丸を表示
+    const ring = $('brushRing');
+    const showRing = e => {
+      if (cutTool === 'pick' || !pv._map) { ring.hidden = true; pv.classList.remove('brushing'); return; }
+      const wr = $('cutPrevWrap').getBoundingClientRect(), d = +$('cutBrush').value; clearTimeout(ring._t);
+      ring.hidden = false; ring.className = cutTool === 'restore' ? 'restore' : ''; pv.classList.add('brushing');
+      ring.style.width = ring.style.height = d + 'px'; ring.style.left = (e.clientX - wr.left) + 'px'; ring.style.top = (e.clientY - wr.top) + 'px';
+    };
+    ['pointermove','pointerdown','pointerenter'].forEach(ev => pv.addEventListener(ev, showRing));
+    pv.addEventListener('pointerleave', () => { if (!painting) ring.hidden = true; });
+    pv.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') setTimeout(() => { ring.hidden = true; }, 400); });
   })();
   document.querySelectorAll('[data-cmode]').forEach(b => b.addEventListener('click', () => { cutMode = b.dataset.cmode;
     document.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     cutTool = 'pick'; document.querySelectorAll('[data-ctool]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.ctool === 'pick'))); schedule(); }));
-  document.querySelectorAll('[data-ctool]').forEach(b => b.addEventListener('click', () => { cutTool = b.dataset.ctool;
+  document.querySelectorAll('[data-ctool]').forEach(b => b.addEventListener('click', () => { cutTool = b.dataset.ctool; $('brushRing').hidden = true; $('cutPrev').classList.toggle('brushing', cutTool !== 'pick');
     document.querySelectorAll('[data-ctool]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawCutUI(); }));
   $('cutOpen').addEventListener('click', () => { $('cutModal').hidden = false; document.body.style.overflow = 'hidden'; drawCutUI(); });
   $('cutClose').addEventListener('click', () => { $('cutModal').hidden = true; document.body.style.overflow = ''; focusK = 'tag'; applyFocus(); drawCutUI(); });
@@ -903,7 +919,10 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
   }
   $('cutOn').addEventListener('change', () => { syncCut(); if ($('cutOn').checked) { focusK = 'tag'; applyFocus(); if (!cutRect) { $('cutModal').hidden = false; document.body.style.overflow = 'hidden'; } } schedule(); setTimeout(drawCutUI, 0); });
   ['cutTol','cutSoft','cutSpeck'].forEach(id => { $(id).addEventListener('input', () => { syncCut(); quickCut(); }); $(id).addEventListener('change', schedule); });
-  $('cutBrush').addEventListener('input', syncCut);
+  $('cutBrush').addEventListener('input', () => { syncCut();
+    const ring = $('brushRing'), wr = $('cutPrevWrap').getBoundingClientRect(), d = +$('cutBrush').value;
+    ring.hidden = false; ring.className = cutTool === 'restore' ? 'restore' : ''; ring.style.width = ring.style.height = d + 'px';
+    ring.style.left = wr.width/2 + 'px'; ring.style.top = wr.height/2 + 'px'; clearTimeout(ring._t); ring._t = setTimeout(() => { ring.hidden = true; }, 900); });
   ['cutHoles','cutHide'].forEach(id => $(id).addEventListener('change', schedule));
   $('cutShowOrig').addEventListener('change', drawCutUI);
   $('cutPickReset').addEventListener('click', () => { cutPicks = []; keepPicks = []; schedule(); });
