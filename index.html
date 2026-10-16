@@ -73,6 +73,9 @@ button:disabled{opacity:.5;cursor:default}
 .seg button{border:none;border-radius:0;padding:5px 12px;font-size:12px}
 .seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 .view{overflow:auto;border-radius:6px;background:var(--bg);min-height:0;flex:1}
+.flips{display:flex;flex-wrap:wrap;gap:8px}
+.flips button{flex:1;min-width:0;padding:7px 8px;font-size:12.5px}
+.flips button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -197,7 +200,12 @@ button:disabled{opacity:.5;cursor:default}
           <div class="row"><label for="tx">左右</label><input type="range" id="tx" min="-50" max="50" step="1" value="0"><output id="txOut">0</output></div>
           <div class="row"><label for="ty">上下</label><input type="range" id="ty" min="-50" max="50" step="1" value="0"><output id="tyOut">0</output></div>
           <div class="row"><label for="tz">拡大</label><input type="range" id="tz" min="100" max="300" step="5" value="100"><output id="tzOut">100%</output></div>
-          <div class="links"><button class="link" id="tagReset" type="button">位置を元に戻す</button></div>
+          <div class="flips">
+            <button type="button" id="tagFlipX" aria-pressed="false">左右反転</button>
+            <button type="button" id="tagFlipY" aria-pressed="false">上下反転</button>
+            <button type="button" id="tagRot">90°回転</button>
+          </div>
+          <div class="links"><button class="link" id="tagReset" type="button">位置を元に戻す</button><span class="note" id="rotOut"></span></div>
         </div>
         <h3>ボトル型タグのシール</h3>
         <div class="swatches" role="radiogroup" aria-label="ボトル型タグのシール">
@@ -652,11 +660,13 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   const ov = {}, tags = {};
   // ネック色：白いキャップ画像に色を乗算して作る（.ai のピンクと同じ作り方）
   const tintCache = {}, ribCache = {};
-  const tagAdj = {tagbody:{x:0,y:0,z:1}, square:{x:0,y:0,z:1}, heart:{x:0,y:0,z:1}};
+  const ADJ0 = () => ({x:0, y:0, z:1, r:0, fx:false, fy:false});
+  const tagAdj = {tagbody:ADJ0(), square:ADJ0(), heart:ADJ0()};
   function syncTagAdj(){
     const k = document.querySelector('input[name=tag]:checked').value, a = tagAdj[k];
     $('tagAdj').hidden = !a;
     if (a) { $('tx').value = a.x; $('ty').value = -a.y; $('tz').value = Math.round(a.z*100); }
+    if (a) { $('tagFlipX').setAttribute('aria-pressed', String(a.fx)); $('tagFlipY').setAttribute('aria-pressed', String(a.fy)); $('rotOut').textContent = a.r ? `回転 ${a.r}°` : ''; }
     $('txOut').value = $('tx').value; $('tyOut').value = $('ty').value; $('tzOut').value = $('tz').value + '%';
   }
   // リボン：水色リボンの明るさ（ツヤ・影）を残して色を塗り替える
@@ -751,15 +761,21 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       }
     }
     const TAGIDX = {tagbody:4, square:5, heart:6};
+    // タグの画像枠（PDF座標 x, y, 幅, 高さ）
+    const TAGRECT = {tagbody:[396.28,43.838,106.88,75.854], square:[420.847,46.6,60.385,88.644], heart:[391.115,42.977,122.828,101.513]};
+    const AR = PLACE[3][0] / PLACE[3][3];
     const PL = PLACE.map((p, i) => {
       const tk = Object.keys(TAGIDX).find(k => TAGIDX[k] === i);
       if (!tk || !tagAdj[tk]) return p;
-      let [a,b,c,d,e,f] = p; const {x:ax, y:ay, z} = tagAdj[tk], cx = e + (a + c)/2, cy = f + (b + d)/2;
-      a *= z; b *= z; c *= z; d *= z;
+      const {x:ax, y:ay, z, r, fx, fy} = tagAdj[tk], [rx, ry, rw, rh] = TAGRECT[tk];
+      // 枠をちょうど覆う大きさ（90°・270°回転のときは縦横を入れ替えて計算）
+      const side = (r % 180 === 0) ? Math.max(rw/AR, rh) : Math.max(rw, rh/AR);
+      let ex = [AR*side*z*(fx ? -1 : 1), 0], ey = [0, side*z*(fy ? -1 : 1)];
+      const t = r * Math.PI / 180, rot = v => [v[0]*Math.cos(t) - v[1]*Math.sin(t), v[0]*Math.sin(t) + v[1]*Math.cos(t)];
+      ex = rot(ex); ey = rot(ey);
       // 左右・上下は枠の大きさに対する割合（プラスで右・上）
-      const w = Math.abs(p[0]) + Math.abs(p[2]), h = Math.abs(p[1]) + Math.abs(p[3]);
-      e = cx - (a + c)/2 + ax/100*w; f = cy - (b + d)/2 + ay/100*h;
-      return [a,b,c,d,e,f];
+      const cx = rx + rw/2 + ax/100*rw, cy = ry + rh/2 + ay/100*rh;
+      return [ex[0], ex[1], ey[0], ey[1], cx - (ex[0]+ey[0])/2, cy - (ex[1]+ey[1])/2];
     });
     const inv = PL.map(([a,b,c,d,e,f]) => { const det = a*d-b*c; return {a,b,c,d,e,f,det}; });
     for (let py = 0; py < OH; py++) {
@@ -820,7 +836,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
     const a = tagAdj[document.querySelector('input[name=tag]:checked').value]; if (!a) return;
     a.x = +$('tx').value; a.y = -(+$('ty').value); a.z = (+$('tz').value)/100; syncTagAdj(); schedule();
   }));
-  $('tagReset').addEventListener('click', () => { const a = tagAdj[document.querySelector('input[name=tag]:checked').value]; if (a) { a.x = 0; a.y = 0; a.z = 1; syncTagAdj(); schedule(); } });
+  const curAdj = () => tagAdj[document.querySelector('input[name=tag]:checked').value];
+  $('tagFlipX').addEventListener('click', () => { const a = curAdj(); if (a) { a.fx = !a.fx; syncTagAdj(); schedule(); } });
+  $('tagFlipY').addEventListener('click', () => { const a = curAdj(); if (a) { a.fy = !a.fy; syncTagAdj(); schedule(); } });
+  $('tagRot').addEventListener('click', () => { const a = curAdj(); if (a) { a.r = (a.r + 270) % 360; syncTagAdj(); schedule(); } });
+  $('tagReset').addEventListener('click', () => { const a = tagAdj[document.querySelector('input[name=tag]:checked').value]; if (a) { Object.assign(a, ADJ0()); syncTagAdj(); schedule(); } });
   ['decoNeck','decoChira','showNote'].forEach(id => $(id).addEventListener('change', schedule));
   ['size','pos','shadow','useLogo'].forEach(id => $(id).addEventListener('input', () => { syncOutputs(); schedule(); }));
   $('clearLogo').addEventListener('click', () => {
