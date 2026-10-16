@@ -127,6 +127,7 @@ button:disabled{opacity:.5;cursor:default}
 .pastezone:focus{color:var(--fg);border-style:solid;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 30%,transparent)}
 .pastezone:focus:empty::before{content:"Ctrl+V / ⌘+V で貼り付け";color:var(--muted)}
 .drop.target{border-color:var(--accent3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 25%,transparent)}
+.ver{margin-left:10px;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid rgba(0,229,255,.5);color:#7ff3ff;white-space:nowrap}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -165,7 +166,7 @@ button:disabled{opacity:.5;cursor:default}
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。</p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:10</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
