@@ -59,6 +59,8 @@ header p{margin:0;color:var(--muted)}
 .row{display:flex;align-items:center;gap:10px}
 .row label{flex:none;width:64px;color:var(--muted);font-size:12px}
 .row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.row input[type=color]{width:34px;height:24px;padding:0;border:1.5px solid var(--line);border-radius:6px;background:none;flex:none}
+.row .link{flex:none}
 .row output{width:48px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
 .check{display:flex;align-items:center;gap:8px;font-size:13px}
 .check input{accent-color:var(--accent)}
@@ -133,7 +135,18 @@ button:disabled{opacity:.5;cursor:default}
           <span class="t"><b id="nameDesign">サンプル表示中</b><span>クリックまたはドラッグで画像を選ぶ（PNG / JPG）</span></span>
           <input type="file" id="fileDesign" accept="image/*">
         </label>
-        <p class="note">縦横比は自動で約 1.41 : 1 に合わせます（はみ出た分は上下左右を均等にカット）。</p>
+        <p class="note" id="sizeInfo">フォーマットの比率は 横1.41 : 縦1（推奨 3307×2347px 以上）。</p>
+        <h3>リサイズ（フォーマットに合わせる）</h3>
+        <div class="swatches" role="radiogroup" aria-label="合わせ方">
+          <label class="sw"><input type="radio" name="fit" value="cover" checked>いっぱいに（はみ出しカット）</label>
+          <label class="sw"><input type="radio" name="fit" value="contain">全体を入れる（余白あり）</label>
+          <label class="sw"><input type="radio" name="fit" value="stretch">引き伸ばし</label>
+        </div>
+        <div class="row" id="padRow" hidden><label for="padColor">余白の色</label><input type="color" id="padColor" value="#ffffff"><button class="link" id="padAuto" type="button">画像の端の色にする</button></div>
+        <div class="row"><label for="dz">拡大</label><input type="range" id="dz" min="50" max="300" step="1" value="100"><output id="dzOut">100%</output></div>
+        <div class="row"><label for="dx">左右</label><input type="range" id="dx" min="-50" max="50" step="0.5" value="0"><output id="dxOut">0</output></div>
+        <div class="row"><label for="dy">上下</label><input type="range" id="dy" min="-50" max="50" step="0.5" value="0"><output id="dyOut">0</output></div>
+        <div class="links"><button class="link" id="designReset" type="button">リサイズを元に戻す</button></div>
       </div>
 
       <div class="step">
@@ -744,10 +757,19 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   function buildDesign(){
     const src = designImg || sampleDesign();
     const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
-    let cw = sw, ch = sh;
-    if (sw/sh > ASPECT) cw = Math.round(sh*ASPECT); else ch = Math.round(sw/ASPECT);
+    // 出力サイズ：フォーマットの比率（1.41:1）。元画像の解像度をなるべく保つ
+    const cw = Math.max(1, Math.round(Math.max(sw, sh*ASPECT))), ch = Math.round(cw/ASPECT);
     const c = document.createElement('canvas'); c.width = cw; c.height = ch;
-    const x = c.getContext('2d'); x.drawImage(src, (sw-cw)/2, (sh-ch)/2, cw, ch, 0, 0, cw, ch);
+    const x = c.getContext('2d');
+    const fit = document.querySelector('input[name=fit]:checked').value, z = (+$('dz').value)/100;
+    let w, h;
+    if (fit === 'stretch') { w = cw; h = ch; }
+    else { const r = fit === 'cover' ? Math.max(cw/sw, ch/sh) : Math.min(cw/sw, ch/sh); w = sw*r; h = sh*r; }
+    w *= z; h *= z;
+    const ox = (cw - w)/2 + (+$('dx').value)/100*cw, oy = (ch - h)/2 - (+$('dy').value)/100*ch;
+    if (fit === 'contain' || z < 1 || $('dx').value != 0 || $('dy').value != 0) { x.fillStyle = $('padColor').value; x.fillRect(0,0,cw,ch); }
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(src, ox, oy, w, h);
     if ($('useLogo').checked && logoImg) {
       const k = cw/1440, lw = Math.round(cw*(+$('size').value)/100), lh = Math.round(logoImg.height*lw/logoImg.width);
       const half = Math.floor(lw/2), y = Math.round(ch*(+$('pos').value)/100 - lh/2);
@@ -861,6 +883,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   $('tagRot').addEventListener('click', () => { const a = curAdj(); if (a) { a.r = (a.r + 270) % 360; syncTagAdj(); schedule(); } });
   $('tagReset').addEventListener('click', () => { const a = tagAdj[document.querySelector('input[name=tag]:checked').value]; if (a) { Object.assign(a, ADJ0()); syncTagAdj(); schedule(); } });
   ['decoNeck','decoChira','showNote'].forEach(id => $(id).addEventListener('change', schedule));
+  function syncDesignAdj(){
+    $('dzOut').value = $('dz').value + '%'; $('dxOut').value = $('dx').value; $('dyOut').value = $('dy').value;
+    $('padRow').hidden = document.querySelector('input[name=fit]:checked').value !== 'contain' && +$('dz').value >= 100;
+  }
+  ['dz','dx','dy','padColor'].forEach(id => $(id).addEventListener('input', () => { syncDesignAdj(); schedule(); }));
+  document.querySelectorAll('input[name=fit]').forEach(r => r.addEventListener('change', () => { syncDesignAdj(); schedule(); }));
+  $('designReset').addEventListener('click', () => { $('dz').value = 100; $('dx').value = 0; $('dy').value = 0; document.querySelector('input[name=fit][value=cover]').checked = true; syncDesignAdj(); schedule(); });
+  $('padAuto').addEventListener('click', () => {
+    if (!designImg) return;
+    const c = document.createElement('canvas'), w = designImg.naturalWidth, h = designImg.naturalHeight; c.width = w; c.height = h;
+    const x = c.getContext('2d'); x.drawImage(designImg, 0, 0);
+    let r = 0, g = 0, b = 0, n = 0;
+    const take = d => { for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i+1]; b += d[i+2]; n++; } };
+    take(x.getImageData(0,0,w,2).data); take(x.getImageData(0,h-2,w,2).data); take(x.getImageData(0,0,2,h).data); take(x.getImageData(w-2,0,2,h).data);
+    const hex = v => Math.round(v/n).toString(16).padStart(2,'0'); $('padColor').value = '#' + hex(r) + hex(g) + hex(b); schedule();
+  });
   ['size','pos','shadow','useLogo'].forEach(id => $(id).addEventListener('input', () => { syncOutputs(); schedule(); }));
   $('clearLogo').addEventListener('click', () => {
     logoImg = null; $('fileLogo').value = ''; $('nameLogo').textContent = 'ロゴ未選択'; $('thumbLogo').removeAttribute('src');
@@ -879,6 +917,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
   pick($('fileDesign'), $('dropDesign'), (img, n, url) => {
     designImg = img; isSample = false; designName = n; $('nameDesign').textContent = n; $('thumbDesign').src = url;
     const stem = n.replace(/\.[^.]+$/, ''); if (!$('name').value) $('name').value = stem;
+    $('sizeInfo').textContent = `元画像 ${img.naturalWidth}×${img.naturalHeight}px（比率 ${(img.naturalWidth/img.naturalHeight).toFixed(2)} : 1）→ フォーマットは 1.41 : 1。`;
     if (img.naturalWidth < 2000) status(`画像の幅が ${img.naturalWidth}px なので、提出用では引き伸ばされます。確認用には十分です。`);
   });
   pick($('fileOrig'), $('dropOrig'), (img, n, url) => { origImg = trim(img); $('nameOrig').textContent = n; $('thumbOrig').src = url; $('origR').checked = true; });
@@ -955,7 +994,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       await Promise.all([...Object.keys(OVL).map(async k => { ov[k] = await load(`ov-${k}.png`); }),
         ...Object.keys(TAGS).map(async k => { const [b, t] = await Promise.all([load(`tag-${k}.png`), load(`tag-${k}-t.png`)]); tags[k] = {b: dataOf(b), t: dataOf(t)}; })]);
       $('thumbDesign').src = sampleDesign().toDataURL();
-      syncOutputs(); syncTagAdj(); compose();
+      syncOutputs(); syncTagAdj(); syncDesignAdj(); compose();
     } catch (e) { status('フォーマットの読み込みに失敗しました。ページを再読み込みしてください。', true); }
   })();
 })();
