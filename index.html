@@ -132,9 +132,22 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 .zoombtn{padding:5px 12px;font-size:12px;border-color:var(--accent3);color:var(--accent3)}
 .tiny{margin:0;font-size:11px;line-height:1.5;color:var(--muted)}
 .cutbox:not([hidden]){display:flex;flex-direction:column;gap:8px}
-#cutSel,#cutPrev{width:100%;height:auto;border-radius:10px;border:1.5px solid var(--line);touch-action:none}
-#cutSel{cursor:crosshair}
-#cutPrev{cursor:copy;background:repeating-conic-gradient(#d9dbe3 0 25%,#fff 0 50%) 0 0/14px 14px}
+#cutThumb{width:100%;height:auto;border-radius:10px;border:1.5px solid var(--line);background:repeating-conic-gradient(#d9dbe3 0 25%,#fff 0 50%) 0 0/12px 12px}
+.cutmodal{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;background:color-mix(in srgb,#060a1f 70%,transparent);backdrop-filter:blur(6px);
+  padding:calc(10px + env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));gap:10px}
+.cutmodal[hidden]{display:none!important}
+.cm-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--panel);border-radius:16px;padding:10px 14px}
+.cm-head .tiny{flex:1;min-width:200px}
+.cm-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;overflow:auto}
+@media (max-width:860px){.cm-body{grid-template-columns:minmax(0,1fr)}}
+.cm-pane{background:var(--panel);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.cm-pane h3{margin:0;font-size:14px;color:var(--fg)}
+.cm-canvaswrap{border-radius:12px;border:1.5px solid var(--line);overflow:hidden;background:var(--bg)}
+.cm-canvaswrap.check{background:repeating-conic-gradient(#d9dbe3 0 25%,#fff 0 50%) 0 0/16px 16px}
+#cutSel,#cutPrev{display:block;width:100%;height:auto;touch-action:none}
+#cutPrev{max-height:58vh;object-fit:contain}
+.cm-tools{display:flex;flex-wrap:wrap;gap:8px}
+.cm-sliders .row label{width:110px}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -173,7 +186,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:15</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 21:40</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -306,15 +319,9 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
           <h3>タグの文字を切り離す</h3>
           <label class="check"><input type="checkbox" id="cutOn"> デザインから文字を切り出して、タグの上で別に動かす</label>
           <div class="cutbox" id="cutBox" hidden>
-            <p class="tiny">① 下のデザインで、文字のまわりをドラッグして四角で囲んでください。</p>
-            <canvas id="cutSel" width="600" height="426" aria-label="切り出す範囲を選ぶ"></canvas>
-            <p class="tiny">② 切り出した文字（市松模様の部分が透明）。背景が残っているところをタップすると、その色も消えます。</p>
-            <canvas id="cutPrev" width="600" height="200" aria-label="切り出した文字"></canvas>
-            <div class="row"><label for="cutTol">背景の消し具合</label><input type="range" id="cutTol" min="0" max="160" step="1" value="45"><output id="cutTolOut">45</output></div>
-            <div class="row"><label for="cutSoft">ふちのなめらかさ</label><input type="range" id="cutSoft" min="0" max="100" step="1" value="40"><output id="cutSoftOut">40</output></div>
-            <label class="check"><input type="checkbox" id="cutHoles" checked> 文字のすき間（○の中など）の背景も消す</label>
+            <button type="button" class="primary" id="cutOpen">✂️ 文字の切り出し画面を開く</button>
+            <canvas id="cutThumb" width="600" height="160" aria-label="切り出した文字"></canvas>
             <label class="check"><input type="checkbox" id="cutHide" checked> タグの中の元の文字を消す</label>
-            <div class="links"><button class="link" id="cutPickReset" type="button">タップで消した色をリセット</button></div>
             <h3>文字の位置</h3>
             <div class="row"><label for="cx">左右</label><input type="range" id="cx" min="-60" max="60" step="0.5" value="0"><output id="cxOut">0</output></div>
             <div class="row"><label for="cy">上下</label><input type="range" id="cy" min="-60" max="60" step="0.5" value="0"><output id="cyOut">0</output></div>
@@ -359,6 +366,45 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
       </div>
       <div class="view" id="view"><img id="outImg" alt="提出用フォーマット（長押し・右クリックで保存）" hidden><canvas id="out" width="2481" height="3508" aria-label="提出用フォーマットのプレビュー"></canvas></div>
       <p class="note">背面のボトル図にロゴが全部収まっているか確認してください。巻くと左右の端がつながって1つのロゴになります。</p>
+    </section>
+  </div>
+</div>
+<div class="cutmodal" id="cutModal" hidden role="dialog" aria-modal="true" aria-label="文字の切り出し">
+  <div class="cm-head">
+    <b>✂️ 文字の切り出し</b>
+    <span class="tiny">① 左で文字を四角で囲む（四角は動かす・角や辺で大きさ変更ができます）　② 右で残す文字を整える</span>
+    <button type="button" class="primary" id="cutClose">完了</button>
+  </div>
+  <div class="cm-body">
+    <section class="cm-pane">
+      <h3>① 範囲を選ぶ</h3>
+      <div class="cm-canvaswrap"><canvas id="cutSel" width="1200" height="852" aria-label="切り出す範囲を選ぶ"></canvas></div>
+      <div class="links"><button class="link" id="cutRectReset" type="button">範囲を選び直す</button></div>
+    </section>
+    <section class="cm-pane">
+      <h3>② 文字だけ残す</h3>
+      <div class="cm-tools">
+        <div class="seg" role="group" aria-label="消し方">
+          <button type="button" data-cmode="bg" aria-pressed="true">背景の色を消す</button>
+          <button type="button" data-cmode="keep" aria-pressed="false">文字の色を残す</button>
+        </div>
+        <div class="seg" role="group" aria-label="ツール">
+          <button type="button" data-ctool="pick" aria-pressed="true">🎯 色をタップ</button>
+          <button type="button" data-ctool="erase" aria-pressed="false">🧽 消しゴム</button>
+          <button type="button" data-ctool="restore" aria-pressed="false">🖌 戻す</button>
+        </div>
+      </div>
+      <p class="tiny" id="cutHint"></p>
+      <div class="cm-canvaswrap check"><canvas id="cutPrev" width="1200" height="400" aria-label="切り出した文字"></canvas></div>
+      <div class="cm-sliders">
+        <div class="row"><label for="cutTol">消し具合</label><input type="range" id="cutTol" min="0" max="160" step="1" value="45"><output id="cutTolOut">45</output></div>
+        <div class="row"><label for="cutSoft">ふちのなめらかさ</label><input type="range" id="cutSoft" min="0" max="100" step="1" value="40"><output id="cutSoftOut">40</output></div>
+        <div class="row"><label for="cutSpeck">小さなゴミを消す</label><input type="range" id="cutSpeck" min="0" max="100" step="1" value="10"><output id="cutSpeckOut">10</output></div>
+        <div class="row"><label for="cutBrush">ブラシの大きさ</label><input type="range" id="cutBrush" min="4" max="120" step="1" value="24"><output id="cutBrushOut">24</output></div>
+      </div>
+      <label class="check"><input type="checkbox" id="cutHoles" checked> 文字のすき間（○の中など）の背景も消す</label>
+      <label class="check"><input type="checkbox" id="cutShowOrig" checked> 消えた部分をうっすら表示</label>
+      <div class="links"><button class="link" id="cutPickReset" type="button">タップした色をリセット</button><button class="link" id="cutBrushReset" type="button">消しゴム・戻すをリセット</button></div>
     </section>
   </div>
 </div>
@@ -913,10 +959,14 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   // ===== タグの文字を切り出す =====
   let cutRect = null;            // デザイン画像上の範囲（px）
   let cutPicks = [];             // タップで追加した背景色
+  let keepPicks = [];            // タップで追加した文字の色（文字の色を残すモード）
+  let cutMode = 'bg', cutTool = 'pick';
+  let brush = null;              // 消しゴム・戻す（範囲内の画素ごと：1=消す 2=戻す）
+  let cutCrop = null;            // 範囲の元画像と結果（大きな画面の表示用）
   let cutImg = null, cutOrg = [0,0], tagDesign = null;   // 切り出した文字・その左上（デザイン px）・元の文字を消したデザイン
   const cutOn = () => $('cutOn').checked && cutRect && cutRect.w > 4 && cutRect.h > 4;
   function makeCut(){
-    cutImg = null; tagDesign = null; if (!cutOn()) return;
+    cutImg = null; tagDesign = null; cutCrop = null; if (!cutOn()) return;
     const W0 = designCanvas.width, H0 = designCanvas.height;
     const r = {x: Math.max(0, Math.round(cutRect.x)), y: Math.max(0, Math.round(cutRect.y))};
     r.w = Math.min(W0 - r.x, Math.round(cutRect.w)); r.h = Math.min(H0 - r.y, Math.round(cutRect.h));
@@ -946,16 +996,45 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     while (qh < qt) { const k = q[qh++], x = k % W, y = (k / W) | 0;
       if (x > 0) push(k-1); if (x < W-1) push(k+1); if (y > 0) push(k-W); if (y < H-1) push(k+W); }
     const holes = $('cutHoles').checked;
+    // 文字の色を残すモード：タップした文字の色に近い画素だけ残す
+    let keepDist = null;
+    if (cutMode === 'keep' && keepPicks.length) {
+      keepDist = new Float32Array(N);
+      for (let k = 0; k < N; k++) { const i = k*4; let m = 1e9;
+        for (const c of keepPicks) { const dr = d[i]-c[0], dg = d[i+1]-c[1], db = d[i+2]-c[2]; const v = dr*dr + dg*dg + db*db; if (v < m) m = v; }
+        keepDist[k] = Math.sqrt(m); }
+    }
+    const alpha = new Float32Array(N);
+    for (let k = 0; k < N; k++) {
+      let a;
+      if (keepDist) { const kt = Math.max(4, 160 - tol); a = keepDist[k] <= kt ? 1 : Math.max(0, 1 - (keepDist[k] - kt) / soft); if (dist[k] <= tol*0.6) a = Math.min(a, dist[k] / Math.max(1, tol*0.6)); }
+      else if (bg[k] || (holes && dist[k] <= tol)) a = 0;
+      else a = Math.min(1, (dist[k] - tol) / soft);
+      alpha[k] = a;
+    }
+    // 小さなゴミ（ばらばらの点）を消す
+    const minArea = Math.round((+$('cutSpeck').value / 100) ** 2 * N * 0.004);
+    if (minArea > 0) {
+      const lab = new Int32Array(N).fill(-1), st = new Int32Array(N);
+      for (let k = 0; k < N; k++) {
+        if (alpha[k] < 0.5 || lab[k] >= 0) continue;
+        let sp = 0, cnt = 0; st[sp++] = k; lab[k] = k; const members = [];
+        while (sp) { const c = st[--sp]; members.push(c); cnt++; const x = c % W, y = (c / W) | 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x+dx, yy = y+dy;
+            if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const n = yy*W + xx; if (lab[n] < 0 && alpha[n] >= 0.5) { lab[n] = k; st[sp++] = n; } } }
+        if (cnt < minArea) for (const c of members) alpha[c] = 0;
+      }
+    }
+    // 消しゴム・戻す
+    if (brush && brush.w === W && brush.h === H) for (let k = 0; k < N; k++) { if (brush.m[k] === 1) alpha[k] = 0; else if (brush.m[k] === 2) alpha[k] = 1; }
     const out = new ImageData(W, H), od = out.data;
     let x0 = W, y0 = H, x1 = -1, y1 = -1;
     for (let k = 0; k < N; k++) {
-      let a;
-      if (bg[k] || (holes && dist[k] <= tol)) a = 0;
-      else a = Math.min(1, (dist[k] - tol) / soft);
-      if (a <= 0.02) continue;
+      const a = alpha[k]; if (a <= 0.02) continue;
       const i = k*4; od[i] = d[i]; od[i+1] = d[i+1]; od[i+2] = d[i+2]; od[i+3] = Math.round(a*255);
       const x = k % W, y = (k / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
     }
+    cutCrop = {r, src, out};
     if (x1 < 0) return;
     const full = document.createElement('canvas'); full.width = W; full.height = H; full.getContext('2d').putImageData(out, 0, 0);
     cutImg = document.createElement('canvas'); cutImg.width = x1-x0+1; cutImg.height = y1-y0+1;
@@ -1011,19 +1090,44 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     ctx.imageSmoothingQuality = 'high'; ctx.drawImage(cutImg, 0, 0); ctx.restore();
   }
   function drawCutUI(){
-    const sel = $('cutSel'); if ($('cutBox').hidden || !designCanvas) return;
-    const k = sel.width / designCanvas.width; sel.height = Math.round(designCanvas.height * k);
+    if (!designCanvas) return;
+    // パネルの小さな表示
+    const th = $('cutThumb'), tx = th.getContext('2d');
+    if (!$('cutBox').hidden) {
+      if (cutImg) { const k = Math.min(th.width / cutImg.width, 220 / cutImg.height); th.height = Math.round(cutImg.height*k) + 16; tx.clearRect(0,0,th.width,th.height); tx.drawImage(cutImg, (th.width - cutImg.width*k)/2, 8, cutImg.width*k, cutImg.height*k); }
+      else { th.height = 90; tx.clearRect(0,0,th.width,th.height); tx.fillStyle = '#8890a8'; tx.font = '22px sans-serif'; tx.textAlign = 'center'; tx.fillText(cutRect ? '文字が見つかりません' : '切り出し画面で文字を囲んでください', th.width/2, 52); }
+    }
+    if ($('cutModal').hidden) return;
+    // ① 範囲
+    const sel = $('cutSel'), k = sel.width / designCanvas.width; sel.height = Math.round(designCanvas.height * k);
     const x = sel.getContext('2d'); x.drawImage(designCanvas, 0, 0, sel.width, sel.height);
-    if (cutRect) { x.fillStyle = 'rgba(6,10,31,.45)'; x.fillRect(0,0,sel.width,sel.height);
+    if (cutRect) {
+      x.fillStyle = 'rgba(6,10,31,.5)'; x.fillRect(0,0,sel.width,sel.height);
       x.drawImage(designCanvas, cutRect.x, cutRect.y, cutRect.w, cutRect.h, cutRect.x*k, cutRect.y*k, cutRect.w*k, cutRect.h*k);
-      x.setLineDash([6,4]); x.lineWidth = 2; x.strokeStyle = '#38f0ff'; x.strokeRect(cutRect.x*k, cutRect.y*k, cutRect.w*k, cutRect.h*k); }
+      x.setLineDash([8,5]); x.lineWidth = 3; x.strokeStyle = '#38f0ff'; x.strokeRect(cutRect.x*k, cutRect.y*k, cutRect.w*k, cutRect.h*k); x.setLineDash([]);
+      x.fillStyle = '#fff'; x.strokeStyle = '#ff4f9a'; x.lineWidth = 2;
+      for (const [hx, hy] of rectHandles()) { x.beginPath(); x.rect(hx*k - 9, hy*k - 9, 18, 18); x.fill(); x.stroke(); }
+    }
+    // ② 結果
     const pv = $('cutPrev'), px = pv.getContext('2d');
-    if (!cutImg) { pv.height = 120; px.clearRect(0,0,pv.width,pv.height); px.fillStyle = '#8890a8'; px.font = '22px sans-serif'; px.textAlign = 'center';
-      px.fillText(cutRect ? '文字が見つかりません。消し具合を下げてください' : 'まだ範囲が選ばれていません', pv.width/2, 66); return; }
-    const kk = Math.min(pv.width / cutImg.width, 260 / cutImg.height); pv.height = Math.max(60, Math.round(cutImg.height*kk) + 20);
-    px.clearRect(0,0,pv.width,pv.height); px.drawImage(cutImg, (pv.width - cutImg.width*kk)/2, 10, cutImg.width*kk, cutImg.height*kk);
-    pv._map = {k: kk, ox: (pv.width - cutImg.width*kk)/2, oy: 10};
+    if (!cutCrop) { pv.width = 1200; pv.height = 300; px.clearRect(0,0,pv.width,pv.height); px.fillStyle = '#5d6470'; px.font = '34px sans-serif'; px.textAlign = 'center';
+      px.fillText(cutRect ? '文字が見つかりません。消し具合を下げてください' : '左のデザインで文字を囲んでください', pv.width/2, 160); pv._map = null; return; }
+    const {r, src, out} = cutCrop, sc = Math.min(1600 / r.w, 1100 / r.h, 4);
+    pv.width = Math.round(r.w * sc); pv.height = Math.round(r.h * sc);
+    const t1 = reuse('cutSrc', r.w, r.h); t1.getContext('2d').putImageData(src, 0, 0);
+    const t2 = reuse('cutOut', r.w, r.h); t2.getContext('2d').putImageData(out, 0, 0);
+    px.clearRect(0,0,pv.width,pv.height); px.imageSmoothingEnabled = sc < 1.5;
+    if ($('cutShowOrig').checked) { px.globalAlpha = 0.18; px.drawImage(t1, 0, 0, pv.width, pv.height); px.globalAlpha = 1; }
+    px.drawImage(t2, 0, 0, pv.width, pv.height);
+    pv._map = {k: sc};
+    $('cutHint').textContent = cutTool === 'pick'
+      ? (cutMode === 'bg' ? '残っている背景をタップすると、その色を消します。' : '残したい文字をタップすると、その色の部分だけ残します（何色でも追加できます）。')
+      : (cutTool === 'erase' ? 'なぞった所を消します。' : 'なぞった所を元の画像に戻します（消えすぎた文字のふちなど）。');
   }
+  // 範囲の四隅・四辺の中点
+  let qcPending = false;
+  function quickCut(){ if (qcPending) return; qcPending = true; requestAnimationFrame(() => { qcPending = false; if (designCanvas) { makeCut(); drawCutUI(); } }); }
+  function rectHandles(){ const r = cutRect; return [[r.x,r.y],[r.x+r.w/2,r.y],[r.x+r.w,r.y],[r.x+r.w,r.y+r.h/2],[r.x+r.w,r.y+r.h],[r.x+r.w/2,r.y+r.h],[r.x,r.y+r.h],[r.x,r.y+r.h/2]]; }
   function compose(){
     designCanvas = buildDesign();
     makeCut();
@@ -1136,31 +1240,86 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   $('tagFlipY').addEventListener('click', () => { const a = curAdj(); if (a) { a.fy = !a.fy; syncTagAdj(); schedule(); } });
   $('tagRot').addEventListener('click', () => { const a = curAdj(); if (a) { a.r = (a.r + 270) % 360; syncTagAdj(); schedule(); } });
   $('tagZoom').addEventListener('click', () => { focusK = focusK === 'tag' ? 'all' : 'tag'; applyFocus(); $('tagZoom').textContent = focusK === 'tag' ? '🔍 全体表示に戻す' : '🔍 タグを拡大表示'; });
-  // 切り出し範囲をドラッグで選ぶ
+  // ① 範囲：新しく囲む／四角を動かす／角・辺で大きさ変更
   (() => {
-    const sel = $('cutSel'); let st = null;
-    const toD = e => { const r = sel.getBoundingClientRect(), k = designCanvas.width / r.width; return [(e.clientX - r.left)*k, (e.clientY - r.top)*k]; };
-    sel.addEventListener('pointerdown', e => { st = toD(e); sel.setPointerCapture(e.pointerId); e.preventDefault(); });
-    sel.addEventListener('pointermove', e => { if (!st) return; const p = toD(e);
-      cutRect = {x: Math.min(st[0], p[0]), y: Math.min(st[1], p[1]), w: Math.abs(p[0]-st[0]), h: Math.abs(p[1]-st[1])}; drawCutUI(); });
-    sel.addEventListener('pointerup', () => { if (!st) return; st = null; cutPicks = []; Object.assign(cutAdj, {x:0,y:0,z:1,r:0}); syncCut(); schedule(); });
-    $('cutPrev').addEventListener('click', e => {
-      const pv = $('cutPrev'), m = pv._map; if (!cutImg || !m || !cutRect) return;
-      const r = pv.getBoundingClientRect(), k = pv.width / r.width, x = ((e.clientX - r.left)*k - m.ox)/m.k, y = ((e.clientY - r.top)*k - m.oy)/m.k;
-      const dx = Math.round(cutOrg[0] + x), dy = Math.round(cutOrg[1] + y);
-      const c = designCanvas.getContext('2d').getImageData(dx, dy, 1, 1).data; cutPicks.push([c[0], c[1], c[2]]); schedule();
+    const sel = $('cutSel'); let drag = null;
+    const toD = e => { const r = sel.getBoundingClientRect(), k = designCanvas.width / r.width; return [(e.clientX - r.left)*k, (e.clientY - r.top)*k, k]; };
+    sel.addEventListener('pointerdown', e => {
+      const [px, py, k] = toD(e), tol = 16 * k; sel.setPointerCapture(e.pointerId); e.preventDefault();
+      if (cutRect) {
+        const hs = rectHandles(), hi = hs.findIndex(([hx, hy]) => Math.abs(hx-px) < tol && Math.abs(hy-py) < tol);
+        if (hi >= 0) { drag = {type:'handle', hi, r0: {...cutRect}}; return; }
+        if (px > cutRect.x && px < cutRect.x + cutRect.w && py > cutRect.y && py < cutRect.y + cutRect.h) { drag = {type:'move', p0: [px, py], r0: {...cutRect}}; return; }
+      }
+      drag = {type:'new', p0: [px, py]};
     });
+    sel.addEventListener('pointermove', e => {
+      const [px, py, k] = toD(e);
+      if (!drag) { if (cutRect) { const tol = 16*k, onH = rectHandles().some(([hx, hy]) => Math.abs(hx-px) < tol && Math.abs(hy-py) < tol);
+        const inR = px > cutRect.x && px < cutRect.x + cutRect.w && py > cutRect.y && py < cutRect.y + cutRect.h; sel.style.cursor = onH ? 'nwse-resize' : inR ? 'move' : 'crosshair'; } return; }
+      const W0 = designCanvas.width, H0 = designCanvas.height, cl = (v, a, b) => Math.max(a, Math.min(b, v));
+      if (drag.type === 'new') { const [x0, y0] = drag.p0; cutRect = {x: Math.min(x0, px), y: Math.min(y0, py), w: Math.abs(px-x0), h: Math.abs(py-y0)}; }
+      else if (drag.type === 'move') { const r = drag.r0; cutRect = {...r, x: cl(r.x + px - drag.p0[0], 0, W0 - r.w), y: cl(r.y + py - drag.p0[1], 0, H0 - r.h)}; }
+      else { const r = drag.r0, hi = drag.hi; let L = r.x, T = r.y, R = r.x + r.w, B = r.y + r.h;
+        if ([0,6,7].includes(hi)) L = cl(px, 0, R - 8); if ([2,3,4].includes(hi)) R = cl(px, L + 8, W0);
+        if ([0,1,2].includes(hi)) T = cl(py, 0, B - 8); if ([4,5,6].includes(hi)) B = cl(py, T + 8, H0);
+        cutRect = {x: L, y: T, w: R - L, h: B - T}; }
+      drawCutUI();
+    });
+    const end = () => { if (!drag) return; const t = drag.type; drag = null;
+      if (t === 'new') { cutPicks = []; keepPicks = []; Object.assign(cutAdj, {x:0,y:0,z:1,r:0}); syncCut(); }
+      brush = null; schedule(); };
+    sel.addEventListener('pointerup', end); sel.addEventListener('pointercancel', end);
   })();
+  // ② 結果：色をタップ／消しゴム／戻す
+  (() => {
+    const pv = $('cutPrev'); let painting = false, last = null;
+    const toC = e => { const r = pv.getBoundingClientRect(), m = pv._map; if (!m) return null; const k = pv.width / r.width; return [((e.clientX - r.left)*k)/m.k, ((e.clientY - r.top)*k)/m.k]; };
+    const paint = (p) => {
+      const {r} = cutCrop; if (!brush || brush.w !== r.w || brush.h !== r.h) brush = {w: r.w, h: r.h, m: new Uint8Array(r.w*r.h)};
+      const rad = (+$('cutBrush').value / 2) * (pv.width / pv.getBoundingClientRect().width) / pv._map.k + 0.5, v = cutTool === 'erase' ? 1 : 2;
+      const pts = last ? Math.max(1, Math.ceil(Math.hypot(p[0]-last[0], p[1]-last[1]) / (rad/2))) : 1;
+      for (let s2 = 1; s2 <= pts; s2++) { const cx = last ? last[0] + (p[0]-last[0])*s2/pts : p[0], cy = last ? last[1] + (p[1]-last[1])*s2/pts : p[1];
+        for (let y = Math.max(0, Math.floor(cy-rad)); y <= Math.min(r.h-1, Math.ceil(cy+rad)); y++)
+          for (let x = Math.max(0, Math.floor(cx-rad)); x <= Math.min(r.w-1, Math.ceil(cx+rad)); x++)
+            if ((x-cx)**2 + (y-cy)**2 <= rad*rad) brush.m[y*r.w + x] = v; }
+      last = p;
+    };
+    pv.addEventListener('pointerdown', e => {
+      const p = toC(e); if (!p || !cutCrop) return; e.preventDefault();
+      if (cutTool === 'pick') {
+        const {r, src} = cutCrop, x = Math.min(r.w-1, Math.max(0, Math.round(p[0]))), y = Math.min(r.h-1, Math.max(0, Math.round(p[1]))), i = (y*r.w + x)*4;
+        const c = [src.data[i], src.data[i+1], src.data[i+2]];
+        if (cutMode === 'bg') cutPicks.push(c); else keepPicks.push(c);
+        quickCut(); schedule(); return;
+      }
+      pv.setPointerCapture(e.pointerId); painting = true; last = null; paint(p); quickCut();
+    });
+    pv.addEventListener('pointermove', e => { if (!painting) return; const p = toC(e); if (p) { paint(p); quickCut(); } });
+    const end = () => { if (painting) schedule(); painting = false; last = null; };
+    pv.addEventListener('pointerup', end); pv.addEventListener('pointercancel', end);
+  })();
+  document.querySelectorAll('[data-cmode]').forEach(b => b.addEventListener('click', () => { cutMode = b.dataset.cmode;
+    document.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    cutTool = 'pick'; document.querySelectorAll('[data-ctool]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.ctool === 'pick'))); schedule(); }));
+  document.querySelectorAll('[data-ctool]').forEach(b => b.addEventListener('click', () => { cutTool = b.dataset.ctool;
+    document.querySelectorAll('[data-ctool]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); drawCutUI(); }));
+  $('cutOpen').addEventListener('click', () => { $('cutModal').hidden = false; document.body.style.overflow = 'hidden'; drawCutUI(); });
+  $('cutClose').addEventListener('click', () => { $('cutModal').hidden = true; document.body.style.overflow = ''; focusK = 'tag'; applyFocus(); drawCutUI(); });
+  $('cutRectReset').addEventListener('click', () => { cutRect = null; brush = null; cutPicks = []; keepPicks = []; schedule(); });
   function syncCut(){
     $('cutBox').hidden = !$('cutOn').checked;
-    $('cutTolOut').value = $('cutTol').value; $('cutSoftOut').value = $('cutSoft').value;
+    $('cutTolOut').value = $('cutTol').value; $('cutSoftOut').value = $('cutSoft').value; $('cutSpeckOut').value = $('cutSpeck').value; $('cutBrushOut').value = $('cutBrush').value;
     $('cx').value = cutAdj.x; $('cy').value = cutAdj.y; $('cz').value = Math.round(cutAdj.z*100); $('cr').value = cutAdj.r;
     $('cxOut').value = cutAdj.x; $('cyOut').value = cutAdj.y; $('czOut').value = Math.round(cutAdj.z*100) + '%'; $('crOut').value = cutAdj.r + '°';
   }
-  $('cutOn').addEventListener('change', () => { syncCut(); if ($('cutOn').checked) { focusK = 'tag'; applyFocus(); } schedule(); setTimeout(drawCutUI, 0); });
-  ['cutTol','cutSoft'].forEach(id => $(id).addEventListener('input', () => { syncCut(); schedule(); }));
+  $('cutOn').addEventListener('change', () => { syncCut(); if ($('cutOn').checked) { focusK = 'tag'; applyFocus(); if (!cutRect) { $('cutModal').hidden = false; document.body.style.overflow = 'hidden'; } } schedule(); setTimeout(drawCutUI, 0); });
+  ['cutTol','cutSoft','cutSpeck'].forEach(id => { $(id).addEventListener('input', () => { syncCut(); quickCut(); }); $(id).addEventListener('change', schedule); });
+  $('cutBrush').addEventListener('input', syncCut);
   ['cutHoles','cutHide'].forEach(id => $(id).addEventListener('change', schedule));
-  $('cutPickReset').addEventListener('click', () => { cutPicks = []; schedule(); });
+  $('cutShowOrig').addEventListener('change', drawCutUI);
+  $('cutPickReset').addEventListener('click', () => { cutPicks = []; keepPicks = []; schedule(); });
+  $('cutBrushReset').addEventListener('click', () => { brush = null; schedule(); });
   ['cx','cy','cz','cr'].forEach(id => $(id).addEventListener('input', () => {
     cutAdj.x = +$('cx').value; cutAdj.y = +$('cy').value; cutAdj.z = (+$('cz').value)/100; cutAdj.r = +$('cr').value; syncCut(); schedule(); }));
   $('cutPosReset').addEventListener('click', () => { Object.assign(cutAdj, {x:0,y:0,z:1,r:0}); syncCut(); schedule(); });
