@@ -168,7 +168,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:35</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:50</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -608,6 +608,8 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
     drop.addEventListener('dragleave', () => drop.classList.remove('over'));
     drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); take(e.dataTransfer.files[0]); });
+    // 枠の中に貼り付けボタンがあっても、クリックでファイル選択が開くように label と input を結びつける
+    if (drop.tagName === 'LABEL') drop.htmlFor = input.id;
     pasteTargets[drop.id] = take;
     ['pointerdown','pointerenter','focusin'].forEach(ev => drop.addEventListener(ev, () => setPasteTarget(drop.id)));
     // 枠の中の「貼り付け」ボタン（スマホ向け）
