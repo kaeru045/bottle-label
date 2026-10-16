@@ -168,7 +168,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:50</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 17:55</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -761,19 +761,30 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
       status(`この表示では保存ボタンが使えませんでした（${code}）。右のプレビュー画像を右クリック（スマホは長押し）して「画像を保存」してください。`, true);
     }
   }
-  $('dlJpg').addEventListener('click', async () => save(`${fname()}提出用.jpg`, await toBlob(out, 'image/jpeg', 0.92)));
-  $('dlDesign').addEventListener('click', async () => save(`${fname()}デザイン画像.jpg`, await toBlob(designCanvas, 'image/jpeg', 0.95)));
-  $('dlPdf').addEventListener('click', async () => {
+  const SAVE_BTNS = ['dlJpg','dlPdf','dlDesign','dlTag','dlZip','mbJpg','mbZip'];
+  let busy = false;
+  function guard(id, fn){
+    const el = $(id), label = el.textContent;
+    el.addEventListener('click', async e => {
+      e.stopImmediatePropagation();
+      if (busy) { status('いま保存の準備中です。少し待ってください。'); return; }
+      busy = true; SAVE_BTNS.forEach(b => $(b) && ($(b).disabled = true)); el.textContent = '作成中…'; status('ファイルを作成しています…');
+      try { await fn(); } finally { busy = false; SAVE_BTNS.forEach(b => $(b) && ($(b).disabled = noDl && !b.startsWith('mb') ? true : false)); el.textContent = label; }
+    }, true);
+  }
+  guard('dlJpg', async () => save(`${fname()}提出用.jpg`, await toBlob(out, 'image/jpeg', 0.92)));
+  guard('dlDesign', async () => save(`${fname()}デザイン画像.jpg`, await toBlob(designCanvas, 'image/jpeg', 0.95)));
+  guard('dlPdf', async () => {
     if (!window.jspdf) { status('PDF の準備ができていません。少し待ってからもう一度押してください。', true); return; }
     save(`${fname()}提出用.pdf`, makePdfBlob());
   });
-  $('dlTag').addEventListener('click', async () => {
+  guard('dlTag', async () => {
     const tc = buildTagCanvas();
     if (!tc) { status('タグが「なし」になっています。仕様の「タグ」でスクエア・ハート型・ボトル型を選んでください。', true); return; }
     const k = document.querySelector('input[name=tag]:checked').value;
     save(`${fname()}タグ_${TAGNAME[k]}.png`, await toBlob(tc, 'image/png'));
   });
-  $('dlZip').addEventListener('click', async () => {
+  guard('dlZip', async () => {
     if (isSample) { status('先にデザイン画像を選んでください（いまはサンプルです）。', true); return; }
     const n = fname();
     // 2つとも先に作っておき、続けて保存する
