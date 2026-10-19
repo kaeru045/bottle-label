@@ -190,7 +190,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/16 22:00</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/19 14:10</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -943,6 +943,26 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
   document.querySelectorAll('input[name=fit]').forEach(r => r.addEventListener('change', () => { syncDesignAdj(); schedule(); }));
   // リサイズ機能は開発中：URLの最後に #dev を付けたときだけ表示
   if (location.hash === '#dev') { $('resizeDev').hidden = false; $('cutFeature').hidden = false; }
+
+  // 管理サイト（オリシャン完成デザイン管理）の「提出用を手直し」から開いたとき：デザイン画像と仕様を受け取って入れる
+  window.addEventListener('message', async e => {
+    let host = ''; try { host = new URL(e.origin).hostname; } catch (_) {}
+    if (!/(^|\.)googleusercontent\.com$|^script\.google\.com$/.test(host)) return;
+    const m = e.data; if (!m || m.type !== 'orishan-design' || window.__orishanLoaded) return;
+    window.__orishanLoaded = true;
+    try { e.source.postMessage({ type: 'orishan-loaded' }, e.origin); } catch (_) {}
+    try {
+      const blob = await (await fetch(m.design)).blob();
+      const dt = new DataTransfer(); dt.items.add(new File([blob], m.fileName || 'design.jpg', { type: blob.type || 'image/jpeg' }));
+      const inp = $('fileDesign'); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
+      setTimeout(() => {
+        if (m.name) $('name').value = m.name;
+        for (const [n, v] of Object.entries(m.spec || {})) { const r = document.querySelector(`input[name="${n}"][value="${v}"]`); if (r && !r.checked) r.click(); }
+        for (const id of (m.checks || [])) { const el = $(id); if (el && !el.checked) el.click(); }
+        status(`管理サイトから「${m.label || m.name || ''}」のデザインと仕様を読み込みました。手直しして保存してください。`);
+      }, 800);
+    } catch (err) { status('管理サイトからの読み込みに失敗しました。デザイン画像を手で選んでください。', true); }
+  });
   $('promptText').value = AI_PROMPT;
   $('copyPrompt').addEventListener('click', () => {
     const done = () => status('プロンプトをコピーしました。');
