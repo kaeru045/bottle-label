@@ -191,7 +191,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/19 15:30</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/19 17:40</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -1416,7 +1416,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
         const k = Math.min(1, 1100 / Math.max(out.width, out.height)), pc = document.createElement('canvas');
         pc.width = Math.round(out.width * k); pc.height = Math.round(out.height * k); pc.getContext('2d').drawImage(out, 0, 0, pc.width, pc.height);
         const prev = await toBlob(pc, 'image/jpeg', 0.82);
-        const r = await post({ action: 'handback', submission: { name: fname() + '提出用.jpg', data: await b64(sub) }, submissionPreview: { name: fname() + '提出用_プレビュー.jpg', data: await b64(prev) } });
+        const tc = window.__buildTagCanvas && window.__buildTagCanvas(), tk = (document.querySelector('input[name=tag]:checked') || {}).value;
+        const tag = tc ? { name: fname() + 'タグ_' + (window.__TAGNAME[tk] || tk) + '.png', data: await b64(await toBlob(tc, 'image/png')) } : null;
+        const r = await post({ action: 'handback', submission: { name: fname() + '提出用.jpg', data: await b64(sub) }, submissionPreview: { name: fname() + '提出用_プレビュー.jpg', data: await b64(prev) }, tag });
         if (!r.ok) throw new Error(r.error || '保存できませんでした');
         msg(`管理サイトに v${r.version}（修正済み）として保存しました。管理サイトを読み込み直すと反映されます。`);
       } catch (err) { msg('保存できませんでした：' + err.message); }
@@ -1592,6 +1594,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     const o = document.createElement('canvas'); o.width = x1-x0+1; o.height = y1-y0+1; o.getContext('2d').drawImage(cv, -x0, -y0);
     return o;
   }
+  window.__buildTagCanvas = buildTagCanvas; window.__TAGNAME = TAGNAME; // 管理サイトへの登録・保存でタグ画像も送る
   function makePdfBlob(){
     const pdf = new window.jspdf.jsPDF({unit:'pt', format:[595.276, 841.89]});
     pdf.addImage(out.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 595.276, 841.89);
