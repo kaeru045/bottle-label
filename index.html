@@ -191,7 +191,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/19 14:10</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/19 15:30</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -1375,6 +1375,62 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       }, 800);
     } catch (err) { status('管理サイトからの読み込みに失敗しました。デザイン画像を手で選んでください。', true); }
   });
+
+  // 管理サイトの「提出用を手直し」から開いたとき（URL の #orishan=鍵）：画像と仕様を取りに行き、保存・作り直し依頼のボタンを出す
+  const ORISHAN = 'https://script.google.com/macros/s/AKfycbyy6oQ99y-JoFguIjmwnKz3wTrKfjtgjAPEpm5mT_u9NCBR2qrFGFBsXqEsMLW7uRcP/exec';
+  const hm = location.hash.match(/orishan=([0-9a-f]{16,64})/);
+  if (hm) {
+    const T = hm[1];
+    const post = body => fetch(ORISHAN, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ token: T }, body)) }).then(r => r.json());
+    const b64 = async blob => { const u = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:sticky;top:0;z-index:30;background:#1d1a24;color:#fff;padding:10px 14px;display:grid;gap:8px;font-size:14px;box-shadow:0 2px 10px rgba(0,0,0,.2)';
+    bar.innerHTML = '<div id="oriTitle" style="font-weight:800">管理サイトから読み込み中…</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="oriSave" disabled style="font:inherit;font-weight:800;padding:8px 14px;border-radius:8px;border:0;background:#7c3aed;color:#fff">💾 管理サイトに保存</button>'
+      + '<button type="button" id="oriFixBtn" disabled style="font:inherit;font-weight:800;padding:8px 14px;border-radius:8px;border:2px solid #f97066;background:#fff;color:#b42318">🔧 Decolinoで作り直しを依頼</button></div>'
+      + '<div id="oriFix" style="display:none;gap:6px"><textarea id="oriFixText" rows="3" placeholder="例：名前をもっと大きく／背景を明るく／人物を少し下に" style="font-size:16px;border-radius:8px;padding:6px 8px;color:#111"></textarea>'
+      + '<div style="display:flex;gap:8px"><button type="button" id="oriFixSend" style="font:inherit;font-weight:800;padding:8px 14px;border-radius:8px;border:0;background:#d92d20;color:#fff">依頼する</button><button type="button" id="oriFixCancel" style="font:inherit;padding:8px 14px;border-radius:8px;border:0">やめる</button></div></div>'
+      + '<div id="oriMsg" style="font-size:13px;opacity:.9"></div>';
+    document.body.prepend(bar);
+    const msg = t => { $('oriMsg').textContent = t; };
+    fetch(ORISHAN + '?handoff=' + T).then(r => r.json()).then(async j => {
+      if (!j.ok) throw new Error(j.error || '読み込めませんでした');
+      const it = j.item;
+      $('oriTitle').textContent = `管理サイト連携中：${it.order} ${it.shop || ''} ${it.name}（v${it.version}）`;
+      const bin = atob(j.design.data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      const dt = new DataTransfer(); dt.items.add(new File([u], j.design.name || 'design.jpg', { type: j.design.type || 'image/jpeg' }));
+      const inp = $('fileDesign'); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
+      setTimeout(() => {
+        $('name').value = [String(it.order || '').replace('#', ''), it.shop, it.name].filter(Boolean).join('_');
+        for (const [n, v] of Object.entries(j.spec || {})) { const r = document.querySelector(`input[name="${n}"][value="${v}"]`); if (r && !r.checked) r.click(); }
+        for (const id of (j.checks || [])) { const el = $(id); if (el && !el.checked) el.click(); }
+        $('oriSave').disabled = false; $('oriFixBtn').disabled = false;
+        msg('デザインと仕様を読み込みました。手直ししたら「管理サイトに保存」を押してください。');
+      }, 800);
+    }).catch(err => { $('oriTitle').textContent = '管理サイトから読み込めませんでした'; msg(err.message + '（デザイン画像は手で選べます）'); });
+    $('oriSave').addEventListener('click', async () => {
+      if (isSample) { msg('デザイン画像が入っていません。'); return; }
+      const btn = $('oriSave'); btn.disabled = true; btn.textContent = '保存中…';
+      try {
+        const sub = await toBlob(out, 'image/jpeg', 0.92);
+        const k = Math.min(1, 1100 / Math.max(out.width, out.height)), pc = document.createElement('canvas');
+        pc.width = Math.round(out.width * k); pc.height = Math.round(out.height * k); pc.getContext('2d').drawImage(out, 0, 0, pc.width, pc.height);
+        const prev = await toBlob(pc, 'image/jpeg', 0.82);
+        const r = await post({ action: 'handback', submission: { name: fname() + '提出用.jpg', data: await b64(sub) }, submissionPreview: { name: fname() + '提出用_プレビュー.jpg', data: await b64(prev) } });
+        if (!r.ok) throw new Error(r.error || '保存できませんでした');
+        msg(`管理サイトに v${r.version}（修正済み）として保存しました。管理サイトを読み込み直すと反映されます。`);
+      } catch (err) { msg('保存できませんでした：' + err.message); }
+      finally { btn.disabled = false; btn.textContent = '💾 管理サイトに保存'; }
+    });
+    $('oriFixBtn').addEventListener('click', () => { $('oriFix').style.display = 'grid'; $('oriFixText').focus(); });
+    $('oriFixCancel').addEventListener('click', () => { $('oriFix').style.display = 'none'; });
+    $('oriFixSend').addEventListener('click', async () => {
+      const t = $('oriFixText').value.trim(); if (!t) { msg('修正内容を書いてください。'); return; }
+      try { const r = await post({ action: 'handfix', fix: t }); if (!r.ok) throw new Error(r.error);
+        $('oriFix').style.display = 'none'; msg('作り直しを依頼しました。次の定期チェック（毎時7分）か /orishan-fix で Decolino で作り直され、管理サイトに新しい版が載ります。');
+      } catch (err) { msg('依頼できませんでした：' + err.message); }
+    });
+  }
   $('promptText').value = AI_PROMPT;
   $('copyPrompt').addEventListener('click', () => {
     const done = () => status('プロンプトをコピーしました。');
