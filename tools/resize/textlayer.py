@@ -65,7 +65,7 @@ async def render(text, st, width, rotate, c1, c2):
     html,body{{margin:0;background:transparent}}
     #w{{position:absolute;left:0;top:0;display:inline-block;padding:.35em .45em;transform-origin:center}}
     .t{{font-family:F;font-weight:{st['weight']};font-size:200px;line-height:{st['line']};letter-spacing:{st['spacing']};text-align:center;white-space:nowrap;filter:{st['shadow']}}}
-    .l{{display:grid;justify-items:center}} .l>span{{grid-area:1/1}}
+    .l{{display:grid;justify-items:center}} .l>span{{grid-area:1/1;padding:.35em .5em;margin:-.35em -.5em}}
     .s{{color:{st['stroke'] or 'transparent'};-webkit-text-stroke:{st['strokew'] * 2}em {st['stroke'] or 'transparent'}}}
     .f{{background:{fill};-webkit-background-clip:text;background-clip:text;color:transparent}}
     </style></head><body><div id="w"><div class="t">{lines}</div></div></body></html>"""
