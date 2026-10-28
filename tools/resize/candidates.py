@@ -46,9 +46,11 @@ elif cmd == 'add':
             im = load_url(it.pop('photo_url')); stem = os.path.splitext(it.pop('photo_name', 'photo'))[0]
             from ready import check
             ok, why = check(im.shape[1], im.shape[0])
-            if ok: it['notes'] = '【リサイズ不要：' + why + '】そのまま提出用を作ります\n' + str(it.get('notes') or '')
+            if ok: it['notes'] = '【リサイズ不要：' + why + '】そのまま提出用を自動で作ります\n' + str(it.get('notes') or '')
             it['photo'] = enc(im, 4000, 92, f'リサイズ元_{stem}.jpg'); it['thumb'] = enc(im, 700, 80, f'リサイズ元_{stem}_小.jpg')
             r = api({'action': 'resizeAdd', 'items': [it]}); added += r.get('added', 0)
+            if ok and r.get('added'):  # リサイズ不要は押さなくても自動で提出用を作る（すぐ「リサイズ依頼」にする）
+                api({'action': 'resizeState', 'id': it['id'], 'state': 'リサイズ依頼'}); r['auto'] = 'リサイズ不要→自動で作成'
             print(it['id'], r)
         except Exception as e:
             print(it['id'], 'エラー', e)
