@@ -5,7 +5,9 @@
 
 --text   … 「|」で改行
 --style  … 下の STYLES のどれか（背景に合わせて選ぶ）
---cx/--cy… 文字のまとまりの中心（2880×2048 の座標）。顔や大事な所に重ねない・白い範囲（x 268〜2612、y 508〜1834）に収める
+--cx/--cy… 文字のまとまりの中心（2880×2048 の座標）。省略すると「人物の下」（基本の位置）：
+            placement.json の大事な範囲の中央の真下、白い範囲の下端（y 1834）にそろえる
+--placement … place.py の出力先（placement.json）。省略時はデザイン画像と同じフォルダ
 --width  … 文字のまとまりの横幅（px）。この幅に収まるよう自動で大きさを決める
 --rotate … 傾き（度）
 --color1/--color2 … 色を上書き（背景から拾った色を使うとき）
@@ -85,13 +87,21 @@ async def render(text, st, width, rotate, c1, c2):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('design'); ap.add_argument('out'); ap.add_argument('--text', required=True); ap.add_argument('--style', choices=list(STYLES), required=True)
-    ap.add_argument('--cx', type=float, required=True); ap.add_argument('--cy', type=float, required=True)
+    ap.add_argument('--cx', type=float); ap.add_argument('--cy', type=float); ap.add_argument('--placement', default='')
     ap.add_argument('--width', type=float, default=700); ap.add_argument('--rotate', type=float, default=0)
     ap.add_argument('--color1', default=''); ap.add_argument('--color2', default='')
     a = ap.parse_args()
     im = cv2.imread(a.design); assert im is not None and im.shape[1] == W, 'デザイン画像は 2880×2048'
     t = asyncio.run(render(a.text, STYLES[a.style], a.width, a.rotate, a.color1, a.color2))
     th, tw = t.shape[:2]
+    if a.cx is None or a.cy is None:  # 基本：人物の下
+        al0 = t[:, :, 3] > 40; ys0, xs0 = np.nonzero(al0)
+        pj = os.path.join(a.placement or os.path.dirname(os.path.abspath(a.design)), 'placement.json')
+        bx0 = json.load(open(pj))['box'] if os.path.exists(pj) else [SAFE[0], SAFE[1], SAFE[2], SAFE[1]]
+        vw = xs0.max() - xs0.min()
+        cx = min(max((bx0[0] + bx0[2]) / 2, SAFE[0] + vw / 2 + 20), SAFE[2] - vw / 2 - 20)
+        a.cx = cx - ((xs0.min() + xs0.max()) / 2 - tw / 2) if a.cx is None else a.cx
+        a.cy = (SAFE[3] - 30 - ys0.max()) + th / 2 if a.cy is None else a.cy
     x0, y0 = int(round(a.cx - tw / 2)), int(round(a.cy - th / 2))
     # 文字の見える部分が白い範囲に入っているか
     al = t[:, :, 3] > 40; ys, xs = np.nonzero(al)
