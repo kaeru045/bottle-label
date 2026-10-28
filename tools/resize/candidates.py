@@ -49,6 +49,13 @@ elif cmd == 'add':
         except Exception as e:
             print(it['id'], 'エラー', e)
     print(json.dumps({'added': added}))
+elif cmd == 'fill':  # 手動の依頼（AsanaのURLだけ）に、Asanaの添付写真と仕様などを入れる
+    # python3 candidates.py fill ID PHOTO_URL PHOTO_NAME ['{"spec":{...},"checks":[...]}'] ['{"店名":..,"名前":..,"期日":..,"注文":..}']
+    im = load_url(sys.argv[3]); stem = os.path.splitext(sys.argv[4])[0]
+    body = {'action': 'resizeUpdate', 'id': sys.argv[2], 'photo': enc(im, 4000, 92, f'リサイズ元_{stem}.jpg'), 'thumb': enc(im, 700, 80, f'リサイズ元_{stem}_小.jpg')}
+    if len(sys.argv) > 5 and sys.argv[5]: body['spec'] = json.loads(sys.argv[5])
+    if len(sys.argv) > 6 and sys.argv[6]: body.update(json.loads(sys.argv[6]))
+    print(json.dumps(api(body), ensure_ascii=False))
 elif cmd == 'queue':
     print(json.dumps(api({'action': 'resizeQueue'}), ensure_ascii=False))
 elif cmd == 'src':
