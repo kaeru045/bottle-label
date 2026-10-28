@@ -2,7 +2,7 @@
 """リサイズ候補の登録・取得・状態変更（管理サイトの「リサイズ候補」）。
 
   python3 candidates.py known                     … 登録済みの候補ID一覧
-  python3 candidates.py add ITEMS.json            … 候補を登録（Asanaの添付写真をダウンロードしてサムネと一緒に送る）
+  python3 candidates.py add ITEMS.json            … 候補を登録（Asanaの添付写真をダウンロードしてサムネと一緒に送る）。全自動：登録と同時に「リサイズ依頼」にする
       ITEMS.json: [{"id":"<タスクgid>-<添付gid>","order","shop","name","due","asana","notes","spec":{...},"photo_url","photo_name"}, ...]
   python3 candidates.py queue                     … 「リサイズする」が押された候補（状態「文字案決定」＝文字案が選ばれたものも）
   python3 candidates.py chosen ID OUTPATH         … 選ばれた文字案のデザイン画像
@@ -49,8 +49,8 @@ elif cmd == 'add':
             if ok: it['notes'] = '【リサイズ不要：' + why + '】そのまま提出用を自動で作ります\n' + str(it.get('notes') or '')
             it['photo'] = enc(im, 4000, 92, f'リサイズ元_{stem}.jpg'); it['thumb'] = enc(im, 700, 80, f'リサイズ元_{stem}_小.jpg')
             r = api({'action': 'resizeAdd', 'items': [it]}); added += r.get('added', 0)
-            if ok and r.get('added'):  # リサイズ不要は押さなくても自動で提出用を作る（すぐ「リサイズ依頼」にする）
-                api({'action': 'resizeState', 'id': it['id'], 'state': 'リサイズ依頼'}); r['auto'] = 'リサイズ不要→自動で作成'
+            if r.get('added'):  # 全自動：拾った候補はすぐ「リサイズ依頼」にして、同じ定期実行で作る（画面で選ばなくてよい）
+                api({'action': 'resizeState', 'id': it['id'], 'state': 'リサイズ依頼'}); r['auto'] = 'リサイズ不要→そのまま作成' if ok else '自動でリサイズ'
             print(it['id'], r)
         except Exception as e:
             print(it['id'], 'エラー', e)
