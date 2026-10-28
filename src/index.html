@@ -152,6 +152,16 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 #brushRing.restore{box-shadow:0 0 0 2px #19c37d,inset 0 0 0 1px rgba(0,0,0,.35);background:rgba(25,195,125,.18)}
 #cutPrev.brushing{cursor:none}
 .cm-sliders .row label{width:110px}
+.widecv{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
+.widecv.dragging{cursor:grabbing}
+.wideside{overflow:auto}
+.wideside > *{flex:none}
+.wideside .seg button{flex:1;padding:8px 12px;font-size:13px}
+.wideside .row label{width:84px}
+.wideside textarea{font:12px/1.5 var(--f-body);color:var(--fg);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px;width:100%;box-sizing:border-box;resize:vertical}
+.widecheck{margin:0;font-size:13px;font-weight:700;line-height:1.6;color:var(--muted)}
+.widecheck.ok{color:#19a35f}
+.widecheck.ng{color:var(--warn)}
 .mobilebar{display:none}
 @media (max-width:860px){
   .wrap{padding-block:12px 96px}
@@ -190,7 +200,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/19 17:40</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/28 11:50</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -224,6 +234,11 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
           <canvas id="safePrev" width="331" height="235" aria-label="安全範囲の確認"></canvas>
           <figcaption>点線の内側が<b>安全範囲</b>（X 309〜2984px／Y 559〜2081px）。顔・名前・ロゴはこの中へ。色の付いた部分は切れたり歪んだりします。</figcaption>
         </figure>
+        </div>
+        <div id="wideDev" class="devblock" hidden>
+          <h3>横長リサイズ（1440×1024・人物写真）</h3>
+          <p class="tiny">縦長の写真を、フォーマット（上下・左右の帯）に合わせて横長にします。背景はChatGPTかPhotoshopで描き足し、人物は元の写真のまま重ね直します。</p>
+          <button type="button" class="primary" id="wideOpen">🖼️ 横長リサイズを開く</button>
         </div>
       </div>
 
@@ -411,6 +426,67 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
       <label class="check"><input type="checkbox" id="cutHoles" checked> 文字のすき間（○の中など）の背景も消す</label>
       <label class="check"><input type="checkbox" id="cutShowOrig" checked> 消えた部分をうっすら表示</label>
       <div class="links"><button class="link" id="cutPickReset" type="button">タップした色をリセット</button><button class="link" id="cutBrushReset" type="button">消しゴム・戻すをリセット</button></div>
+    </section>
+  </div>
+</div>
+<div class="cutmodal" id="wideModal" hidden role="dialog" aria-modal="true" aria-label="横長リサイズ">
+  <div class="cm-head">
+    <b>🖼️ 横長リサイズ（1440×1024px）</b>
+    <p class="tiny">縦長の人物写真をフォーマットに合わせて置き、背景だけ描き足して仕上げます。頭（髪のてっぺん〜あご）は白い範囲（横134〜1306px・縦254〜917px）に入れます。</p>
+    <button type="button" class="primary" id="wideClose">閉じる</button>
+  </div>
+  <div class="cm-body">
+    <section class="cm-pane">
+      <h3>プレビュー</h3>
+      <div class="cm-canvaswrap"><canvas id="wideCv" width="1440" height="1024" class="widecv" aria-label="横長リサイズのプレビュー"></canvas></div>
+      <div class="links">
+        <label class="check"><input type="checkbox" id="wideBands" checked> フォーマットの帯を表示</label>
+        <label class="check"><input type="checkbox" id="wideShowBox" checked> 頭の枠を表示</label>
+      </div>
+      <p class="widecheck" id="wideCheck">写真を入れてください。</p>
+    </section>
+    <section class="cm-pane wideside">
+      <h3>① 写真を入れる</h3>
+      <label class="drop" id="wideDropPhoto">
+        <img id="wideThumbPhoto" alt="">
+        <span class="t"><b id="wideNamePhoto">未選択</b><span>縦長の人物写真。クリック・ドラッグ・貼り付け</span></span>
+        <input type="file" id="wideFilePhoto" accept="image/*">
+      </label>
+      <h3>② 頭を点線の枠で囲む</h3>
+      <p class="tiny">プレビューの点線の枠を、<b>髪のてっぺんからあごまで</b>が入るように合わせます。枠の中をドラッグで移動、右下の角で大きさ変更。手を離すと、写真がフォーマットの位置に自動で動きます。枠の外をドラッグすると写真だけ動かせます。</p>
+      <h3>③ 配置を選ぶ</h3>
+      <div class="seg" role="group" aria-label="配置">
+        <button type="button" data-wpos="center" aria-pressed="true">中央</button>
+        <button type="button" data-wpos="left" aria-pressed="false">左寄せ</button>
+        <button type="button" data-wpos="right" aria-pressed="false">右寄せ</button>
+      </div>
+      <div class="row"><label for="wideZ">人物の大きさ</label><input type="range" id="wideZ" min="70" max="130" step="1" value="100"><output id="wideZOut">100%</output></div>
+      <div class="links"><button class="link" id="wideRePlace" type="button">フォーマットの位置に置き直す</button></div>
+      <h3>④ 背景を描き足す</h3>
+      <p class="tiny">生成用画像を保存して、下のプロンプトと一緒に<a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>に入れてください。Photoshopの場合は「透明」の方を開いて、生成拡張・生成塗りつぶしで透明部分を埋めます。</p>
+      <textarea id="widePrompt" readonly rows="6" aria-label="ChatGPT用プロンプト"></textarea>
+      <div class="btns">
+        <button type="button" id="wideCopy">プロンプトをコピー</button>
+        <button type="button" class="primary" id="wideSaveIn">生成用画像を保存（余白は白・ChatGPT用）</button>
+        <button type="button" id="wideSaveInT">生成用画像を保存（余白は透明・Photoshop用）</button>
+      </div>
+      <h3>⑤ 生成した画像を戻す</h3>
+      <label class="drop" id="wideDropGen">
+        <img id="wideThumbGen" alt="">
+        <span class="t"><b id="wideNameGen">未選択</b><span>ChatGPT・Photoshopで背景を描き足した画像</span></span>
+        <input type="file" id="wideFileGen" accept="image/*">
+      </label>
+      <button type="button" id="wideAlign">自動で位置合わせ</button>
+      <div class="row"><label for="wideGk">拡大</label><input type="range" id="wideGk" min="80" max="120" step="0.1" value="100"><output id="wideGkOut">100%</output></div>
+      <div class="row"><label for="wideGx">左右</label><input type="range" id="wideGx" min="-150" max="150" step="1" value="0"><output id="wideGxOut">0</output></div>
+      <div class="row"><label for="wideGy">上下</label><input type="range" id="wideGy" min="-150" max="150" step="1" value="0"><output id="wideGyOut">0</output></div>
+      <div class="row"><label for="wideF">なじませ幅</label><input type="range" id="wideF" min="0" max="60" step="1" value="16"><output id="wideFOut">16</output></div>
+      <label class="check"><input type="checkbox" id="wideOver" checked> 元の写真を重ねる（人物を元のまま残す）</label>
+      <p class="tiny">位置がずれていると人物が二重に見えます。「元の写真を重ねる」を外すと生成した画像だけになるので、見比べて合わせてください。生成した画像をドラッグしても動かせます。</p>
+      <h3>⑥ 保存</h3>
+      <input type="text" id="wideName" placeholder="ファイル名（例：Kurumi）" aria-label="ファイル名">
+      <button type="button" class="primary" id="wideSave">完成画像を保存（1440×1024 PNG）</button>
+      <div class="status" id="wideStatus" role="status"></div>
     </section>
   </div>
 </div>
@@ -942,7 +1018,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
   ['dz','dx','dy','padColor'].forEach(id => $(id).addEventListener('input', () => { syncDesignAdj(); schedule(); }));
   document.querySelectorAll('input[name=fit]').forEach(r => r.addEventListener('change', () => { syncDesignAdj(); schedule(); }));
   // リサイズ機能は開発中：URLの最後に #dev を付けたときだけ表示
-  if (location.hash === '#dev') { $('resizeDev').hidden = false; $('cutFeature').hidden = false; }
+  if (location.hash === '#dev') { $('resizeDev').hidden = false; $('cutFeature').hidden = false; $('wideDev').hidden = false; }
 
   // 管理サイト（オリシャン完成デザイン管理）の「提出用を手直し」から開いたとき：デザイン画像と仕様を受け取って入れる
   window.addEventListener('message', async e => {
@@ -1104,7 +1180,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     if (!f) { status('クリップボードに画像がありませんでした。画像そのものをコピー（右クリック→「画像をコピー」など）してから貼り付けてください。', true); return; }
     const named = new File([f], f.name && f.name !== 'image.png' ? f.name : 'pasted.png', {type: f.type});
     (pasteTargets[pasteTarget] || pasteTargets.dropDesign)(named);
-    const label = {dropDesign:'デザイン画像', dropLogo:'ロゴ', dropOrig:'オリジナルネックシール'}[pasteTarget] || 'デザイン画像';
+    const label = {dropDesign:'デザイン画像', dropLogo:'ロゴ', dropOrig:'オリジナルネックシール', wideDropPhoto:'横長リサイズの写真', wideDropGen:'生成した画像'}[pasteTarget] || 'デザイン画像';
     setTimeout(() => status(`${label}に貼り付けました。`), 50);
   };
   window.addEventListener('paste', onPaste, true);
@@ -1240,6 +1316,218 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     await save(`${n}デザイン画像.jpg`, b2);
     status(`${n}提出用.jpg と ${n}デザイン画像.jpg を保存しました。2つ目が保存されない場合は、ブラウザの「複数ファイルのダウンロード」を許可してください。`);
   });
+
+  // ===== 横長リサイズ（1440×1024・人物写真）：開発中、#dev のときだけ表示 =====
+  // フォーマット：上の帯 0〜254px・下の帯 917〜1024px には顔や重要なデザインを入れない。左右 0〜134px・1306〜1440px は背面（背景のみ）。
+  // 頭（髪のてっぺん〜あご）を白い範囲に入れる。頭の上端を 270px、頭の高さを 360px にそろえて置く。
+  (() => {
+    const W = 1440, H = 1024, SAFE_W = {x0:134, x1:1306, y0:254, y1:917};
+    const HEAD_TOP = 270, HEAD_H = 360;
+    const POS_LABEL = {center:'中央', left:'左寄せ', right:'右寄せ'};
+    const WIDE_PROMPT = "添付画像は、横長（1440×1024px）の画像の中に人物の写真を置いたものです。白い余白の部分だけに、写真の背景（壁・花・小物・光の雰囲気）が自然につながるように描き足して、1枚の横長の写真にしてください。\n・人物の顔・髪・体・服・手・アクセサリーや、写真に写っている小物は、形も色も位置も変えないでください。\n・新しい人物、手や腕、文字、ロゴ、枠は追加しないでください。\n・写真の部分の位置と大きさはそのままにし、画像の縦横比（横長 1440×1024）を変えないでください。";
+    const cv = $('wideCv'), cx = cv.getContext('2d');
+    let photo = null, box = null, pl = null, pos = 'center', gen = null, ga = {k:1, dx:0, dy:0}, maskCache = null, aligning = false;
+    const wStatus = (t, err) => { const s = $('wideStatus'); s.textContent = t; s.classList.toggle('err', !!err); };
+    $('widePrompt').value = WIDE_PROMPT;
+
+    // 頭の枠（写真の座標）からフォーマットの位置を計算する
+    function place(){
+      if (!photo || !box) return;
+      const s = HEAD_H / box.h * (+$('wideZ').value / 100);
+      const y = HEAD_TOP - box.y * s;
+      const x = pos === 'left' ? 200 - box.x * s : pos === 'right' ? 1240 - (box.x + box.w) * s : W/2 - (box.x + box.w/2) * s;
+      pl = {s, x, y};
+    }
+    const headRect = () => ({x0: pl.x + box.x*pl.s, y0: pl.y + box.y*pl.s, x1: pl.x + (box.x+box.w)*pl.s, y1: pl.y + (box.y+box.h)*pl.s});
+    function genRect(){
+      const c = Math.max(W / gen.naturalWidth, H / gen.naturalHeight) * ga.k, w = gen.naturalWidth * c, h = gen.naturalHeight * c;
+      return {x: (W - w)/2 + ga.dx, y: (H - h)/2 + ga.dy, w, h};
+    }
+    // 写真のふちを少しずつ透明にするマスク（なじませ幅 f px）
+    function photoMask(f){
+      const r = {x: pl.x, y: pl.y, w: photo.naturalWidth*pl.s, h: photo.naturalHeight*pl.s};
+      const key = [r.x, r.y, r.w, r.h, f].map(v => v.toFixed(2)).join(',');
+      if (maskCache && maskCache.key === key) return maskCache.c;
+      const m = document.createElement('canvas'); m.width = W; m.height = H; const mx = m.getContext('2d');
+      const id = mx.createImageData(W, H), d = id.data;
+      const x0 = Math.max(0, Math.floor(r.x)), x1 = Math.min(W, Math.ceil(r.x + r.w)), y0 = Math.max(0, Math.floor(r.y)), y1 = Math.min(H, Math.ceil(r.y + r.h));
+      for (let y = y0; y < y1; y++) {
+        const ey = Math.min(y + .5 - r.y, r.y + r.h - y - .5);
+        for (let x = x0; x < x1; x++) {
+          const e = Math.min(ey, x + .5 - r.x, r.x + r.w - x - .5);
+          const a = f <= 0 ? (e > 0 ? 1 : 0) : Math.max(0, Math.min(1, e / f));
+          d[(y*W + x)*4 + 3] = a * 255;
+        }
+      }
+      mx.putImageData(id, 0, 0); maskCache = {key, c: m}; return m;
+    }
+    // 生成結果＋元の写真（ふちをなじませて重ねる）を描く
+    function compose(ctx, scale, {bg = 'check', overlay = true} = {}){
+      ctx.save(); ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      if (gen) { const g = genRect(); ctx.drawImage(gen, g.x, g.y, g.w, g.h); }
+      else if (bg === 'check') { for (let y = 0; y < H; y += 32) for (let x = 0; x < W; x += 32) { ctx.fillStyle = ((x + y) / 32) % 2 ? '#e4e8f2' : '#f6f7fb'; ctx.fillRect(x, y, 32, 32); } }
+      else if (bg === 'white') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); }
+      if (photo && pl && (overlay || !gen)) {
+        if (gen) {
+          const t = document.createElement('canvas'); t.width = W * scale; t.height = H * scale; const tx = t.getContext('2d');
+          tx.setTransform(scale, 0, 0, scale, 0, 0);
+          tx.drawImage(photo, pl.x, pl.y, photo.naturalWidth*pl.s, photo.naturalHeight*pl.s);
+          tx.setTransform(1, 0, 0, 1, 0, 0); tx.globalCompositeOperation = 'destination-in';
+          tx.drawImage(photoMask(+$('wideF').value), 0, 0, W * scale, H * scale);
+          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(t, 0, 0);
+        } else ctx.drawImage(photo, pl.x, pl.y, photo.naturalWidth*pl.s, photo.naturalHeight*pl.s);
+      }
+      ctx.restore();
+    }
+    function draw(){
+      cx.clearRect(0, 0, W, H); compose(cx, 1, {overlay: $('wideOver').checked});
+      if ($('wideBands').checked) {
+        cx.save(); cx.fillStyle = 'rgba(255,120,120,.45)'; cx.fillRect(0, 0, W, SAFE_W.y0); cx.fillRect(0, SAFE_W.y1, W, H - SAFE_W.y1);
+        cx.fillStyle = 'rgba(255,240,150,.5)'; cx.fillRect(0, SAFE_W.y0, SAFE_W.x0, SAFE_W.y1 - SAFE_W.y0); cx.fillRect(SAFE_W.x1, SAFE_W.y0, W - SAFE_W.x1, SAFE_W.y1 - SAFE_W.y0);
+        cx.fillStyle = 'rgba(40,20,30,.8)'; cx.font = '700 30px "Zen Kaku Gothic New",sans-serif'; cx.textAlign = 'center';
+        cx.fillText('顔や重要なデザインはここに入れない', W/2, 150); cx.fillText('顔や重要なデザインはここに入れない', W/2, 982);
+        cx.font = '700 24px "Zen Kaku Gothic New",sans-serif';
+        ['背','面'].forEach((c, i) => { cx.fillText(c, SAFE_W.x0/2, 560 + i*32); cx.fillText(c, (SAFE_W.x1 + W)/2, 560 + i*32); });
+        cx.restore();
+      }
+      let msg = '写真を入れてください。', cls = '';
+      if (photo && pl) {
+        const r = headRect(), ng = [];
+        if (r.y0 < SAFE_W.y0) ng.push('上の帯'); if (r.y1 > SAFE_W.y1) ng.push('下の帯');
+        if (r.x0 < SAFE_W.x0) ng.push('左の帯'); if (r.x1 > SAFE_W.x1) ng.push('右の帯');
+        msg = ng.length ? `⚠ 頭が${ng.join('・')}にかかっています。` : '✓ 頭は白い範囲に収まっています。'; cls = ng.length ? 'ng' : 'ok';
+        if ($('wideShowBox').checked && !gen) {
+          cx.save(); cx.lineWidth = 4; cx.setLineDash([14, 10]); cx.strokeStyle = ng.length ? '#ff3b5c' : '#1fd17a';
+          cx.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); cx.setLineDash([]); cx.fillStyle = cx.strokeStyle; cx.fillRect(r.x1 - 14, r.y1 - 14, 28, 28);
+          cx.font = '700 22px "Zen Kaku Gothic New",sans-serif'; cx.fillText('頭（髪〜あご）', r.x0 + 6, r.y0 - 10); cx.restore();
+        }
+      }
+      const el = $('wideCheck'); el.textContent = msg; el.className = 'widecheck ' + cls;
+    }
+    function syncOut(){
+      $('wideZOut').textContent = $('wideZ').value + '%'; $('wideGkOut').textContent = (+$('wideGk').value).toFixed(1) + '%';
+      $('wideGxOut').textContent = $('wideGx').value; $('wideGyOut').textContent = $('wideGy').value; $('wideFOut').textContent = $('wideF').value;
+    }
+    function setGa(k, dx, dy){ ga = {k, dx, dy}; $('wideGk').value = (k*100).toFixed(1); $('wideGx').value = Math.round(dx); $('wideGy').value = Math.round(dy); syncOut(); }
+
+    pick($('wideFilePhoto'), $('wideDropPhoto'), (img, n, url) => {
+      photo = img; $('wideNamePhoto').textContent = n; $('wideThumbPhoto').src = url;
+      if (!$('wideName').value) $('wideName').value = n.replace(/\.[^.]+$/, '');
+      const pw = img.naturalWidth, ph = img.naturalHeight, bw = pw * .55, bh = Math.min(ph * .45, bw * 1.25);
+      box = {x: (pw - bw)/2, y: ph * .04, w: bw, h: bh};
+      gen = null; $('wideNameGen').textContent = '未選択'; $('wideThumbGen').removeAttribute('src');
+      place(); draw(); setPasteTarget('wideDropGen');
+      wStatus(`写真を読み込みました（${pw}×${ph}px）。点線の枠を頭（髪のてっぺん〜あご）に合わせてください。`);
+    });
+    pick($('wideFileGen'), $('wideDropGen'), (img, n, url) => {
+      if (!photo) { wStatus('先に①で元の写真を入れてください。', true); return; }
+      gen = img; $('wideNameGen').textContent = n; $('wideThumbGen').src = url; setGa(1, 0, 0); draw();
+      wStatus(`生成した画像を読み込みました（${img.naturalWidth}×${img.naturalHeight}px）。位置を合わせています…`); align();
+    });
+
+    document.querySelectorAll('[data-wpos]').forEach(b => b.addEventListener('click', () => {
+      pos = b.dataset.wpos; document.querySelectorAll('[data-wpos]').forEach(x => x.setAttribute('aria-pressed', x === b));
+      place(); draw(); if (gen) wStatus('配置を変えたので、生成用画像を保存し直して、背景を描き足し直してください。', true);
+    }));
+    $('wideZ').addEventListener('input', () => { syncOut(); place(); draw(); });
+    $('wideRePlace').addEventListener('click', () => { $('wideZ').value = 100; syncOut(); place(); draw(); });
+    ['wideGk','wideGx','wideGy'].forEach(id => $(id).addEventListener('input', () => { ga = {k: +$('wideGk').value/100, dx: +$('wideGx').value, dy: +$('wideGy').value}; syncOut(); draw(); }));
+    $('wideF').addEventListener('input', () => { syncOut(); draw(); });
+    ['wideBands','wideShowBox','wideOver'].forEach(id => $(id).addEventListener('change', draw));
+
+    // プレビュー上のドラッグ：枠の角＝大きさ、枠の中＝枠の移動、それ以外＝写真（生成画像があるときは生成画像）の移動
+    let drag = null;
+    const pt = e => { const r = cv.getBoundingClientRect(); return {x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height}; };
+    cv.addEventListener('pointerdown', e => {
+      if (!photo || !pl) return; const p = pt(e), r = headRect();
+      let mode = 'photo';
+      if (gen) mode = 'gen';
+      else if ($('wideShowBox').checked && Math.abs(p.x - r.x1) < 34 && Math.abs(p.y - r.y1) < 34) mode = 'size';
+      else if ($('wideShowBox').checked && p.x > r.x0 && p.x < r.x1 && p.y > r.y0 && p.y < r.y1) mode = 'box';
+      drag = {mode, p, box: {...box}, pl: {...pl}, ga: {...ga}}; cv.setPointerCapture(e.pointerId); cv.classList.add('dragging');
+    });
+    cv.addEventListener('pointermove', e => {
+      if (!drag) return; const p = pt(e), dx = p.x - drag.p.x, dy = p.y - drag.p.y;
+      if (drag.mode === 'photo') { pl = {...drag.pl, x: drag.pl.x + dx, y: drag.pl.y + dy}; }
+      else if (drag.mode === 'gen') { setGa(drag.ga.k, drag.ga.dx + dx, drag.ga.dy + dy); }
+      else if (drag.mode === 'box') { box = {...drag.box, x: drag.box.x + dx/pl.s, y: drag.box.y + dy/pl.s}; }
+      else { box = {...drag.box, w: Math.max(20, drag.box.w + dx/pl.s), h: Math.max(20, drag.box.h + dy/pl.s)}; }
+      draw();
+    });
+    const end = () => { if (!drag) return; const m = drag.mode; drag = null; cv.classList.remove('dragging'); if (m === 'box' || m === 'size') { place(); draw(); } };
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+
+    // 生成した画像の位置合わせ：写真の部分の明るさが一番そろう拡大・位置を探す（粗く探してから細かく）
+    async function align(){
+      if (!gen || !photo || aligning) return; aligning = true; $('wideAlign').disabled = true;
+      try {
+        const run = async (D, ks, ds, base) => {
+          const sw = Math.round(W / D), sh = Math.round(H / D);
+          const rc = document.createElement('canvas'); rc.width = sw; rc.height = sh; const rx = rc.getContext('2d', {willReadFrequently: true});
+          rx.drawImage(photo, pl.x/D, pl.y/D, photo.naturalWidth*pl.s/D, photo.naturalHeight*pl.s/D);
+          const ref = rx.getImageData(0, 0, sw, sh).data;
+          // 比べる範囲：写真の内側（ふちを 8% 除く）
+          const pw = photo.naturalWidth*pl.s, ph = photo.naturalHeight*pl.s;
+          const ax0 = Math.max(0, Math.ceil((pl.x + pw*.08)/D)), ax1 = Math.min(sw, Math.floor((pl.x + pw*.92)/D));
+          const ay0 = Math.max(0, Math.ceil((pl.y + ph*.08)/D)), ay1 = Math.min(sh, Math.floor((pl.y + ph*.92)/D));
+          const idx = []; for (let y = ay0; y < ay1; y++) for (let x = ax0; x < ax1; x++) idx.push((y*sw + x)*4);
+          let mr = 0; const rg = new Float32Array(idx.length);
+          idx.forEach((o, i) => { rg[i] = ref[o]*.3 + ref[o+1]*.59 + ref[o+2]*.11; mr += rg[i]; }); mr /= idx.length;
+          const tc = document.createElement('canvas'); tc.width = sw; tc.height = sh; const tx = tc.getContext('2d', {willReadFrequently: true});
+          let best = {cost: Infinity}, cnt = 0;
+          for (const k of ks) for (const dy of ds) for (const dx of ds) {
+            const K = base.k + k, X = base.dx + dx, Y = base.dy + dy;
+            const c = Math.max(W / gen.naturalWidth, H / gen.naturalHeight) * K, w = gen.naturalWidth * c, h = gen.naturalHeight * c;
+            tx.clearRect(0, 0, sw, sh); tx.drawImage(gen, ((W - w)/2 + X)/D, ((H - h)/2 + Y)/D, w/D, h/D);
+            const g = tx.getImageData(0, 0, sw, sh).data; let mg = 0;
+            const gg = new Float32Array(idx.length); idx.forEach((o, i) => { gg[i] = g[o]*.3 + g[o+1]*.59 + g[o+2]*.11; mg += gg[i]; }); mg /= idx.length;
+            let cost = 0; for (let i = 0; i < idx.length; i++) cost += Math.abs((gg[i] - mg) - (rg[i] - mr));
+            cost /= idx.length; if (cost < best.cost) best = {cost, k: K, dx: X, dy: Y};
+            if (++cnt % 150 === 0) { wStatus(`位置を合わせています…（${cnt}）`); await new Promise(r => setTimeout(r, 0)); }
+          }
+          return best;
+        };
+        const range = (a, b, st) => { const r = []; for (let v = a; v <= b + 1e-9; v += st) r.push(+v.toFixed(4)); return r; };
+        let b = await run(8, range(-.14, .14, .02), range(-120, 120, 12), {k:1, dx:0, dy:0});
+        b = await run(4, range(-.02, .02, .005), range(-12, 12, 3), b);
+        b = await run(2, range(-.004, .004, .002), range(-3, 3, 1), b);
+        setGa(b.k, b.dx, b.dy); draw();
+        const q = b.cost < 6 ? 'よく合っています' : b.cost < 12 ? 'だいたい合っています。二重に見えるところがないか確認してください' : '合わせきれませんでした。生成で人物が描き変わっている可能性があります。スライダーで合わせるか、作り直してください';
+        wStatus(`位置合わせ：拡大 ${(b.k*100).toFixed(1)}%・左右 ${Math.round(b.dx)}・上下 ${Math.round(b.dy)}（ずれ ${b.cost.toFixed(1)}：${q}）。`, b.cost >= 12);
+      } finally { aligning = false; $('wideAlign').disabled = false; }
+    }
+    $('wideAlign').addEventListener('click', () => { if (!gen) { wStatus('先に⑤で生成した画像を入れてください。', true); return; } align(); });
+
+    $('wideCopy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(WIDE_PROMPT); wStatus('プロンプトをコピーしました。'); }
+      catch (e) { const t = $('widePrompt'); t.focus(); t.select(); wStatus('自動でコピーできませんでした。選択された文字をコピーしてください。', true); }
+    });
+    const wName = () => ($('wideName').value.trim() || 'design').replace(/[\\/:*?"<>|]/g, '_');
+    async function wSave(filename, blob){
+      if (!downloads) { wStatus('この表示では保存できません。', true); return; }
+      try { await downloads.save({filename, data: blob}); wStatus(`${filename} を保存しました。`); }
+      catch (e) { const code = (e && e.code) || 'unknown'; wStatus(code === 'declined' ? '保存をキャンセルしました。' : `保存できませんでした（${code}）。`, code !== 'declined'); }
+    }
+    // 生成用画像は 2倍（2880×2048）で書き出す
+    const saveInput = bg => async () => {
+      if (!photo) { wStatus('先に①で写真を入れてください。', true); return; }
+      const c = document.createElement('canvas'); c.width = W*2; c.height = H*2; const g0 = gen; gen = null;
+      compose(c.getContext('2d'), 2, {bg}); gen = g0;
+      wSave(`${wName()}_生成用_${POS_LABEL[pos]}_${bg === 'white' ? '白' : '透明'}.png`, await toBlob(c, 'image/png'));
+    };
+    $('wideSaveIn').addEventListener('click', saveInput('white'));
+    $('wideSaveInT').addEventListener('click', saveInput('none'));
+    $('wideSave').addEventListener('click', async () => {
+      if (!photo) { wStatus('先に①で写真を入れてください。', true); return; }
+      if (!gen) { wStatus('背景がまだ描き足されていません。④で生成用画像を作り、⑤で生成した画像を入れてください。', true); return; }
+      const c = document.createElement('canvas'); c.width = W; c.height = H; compose(c.getContext('2d'), 1, {overlay: true});
+      wSave(`${wName()}_横長_${POS_LABEL[pos]}.png`, await toBlob(c, 'image/png'));
+    });
+
+    $('wideOpen').addEventListener('click', () => { $('wideModal').hidden = false; document.body.style.overflow = 'hidden'; setPasteTarget(photo ? 'wideDropGen' : 'wideDropPhoto'); syncOut(); draw(); });
+    $('wideClose').addEventListener('click', () => { $('wideModal').hidden = true; document.body.style.overflow = ''; setPasteTarget('dropDesign'); });
+    syncOut();
+  })();
 
   (async () => {
     try {
