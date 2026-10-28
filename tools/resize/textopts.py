@@ -4,7 +4,7 @@
   python3 textopts.py DIR --cand ID --text 'Happy Birthday' --styles pirate,script,pop --spec '<spec>' --checks '<checks>' [--rotate -3,-4,-3] [--no-send]
 
 DIR は finish.py の出力先（design.jpg・placement.json）。DIR/text1.jpg〜text3.jpg（2880×2048）を作る。
-書体は背景に合わせて3つ選ぶ（textlayer.py の STYLES）。位置は人物の下（基本）。
+書体は背景に合わせて3つ選ぶ（`python3 textlayer.py --list` で20種類の一覧と、合う背景の目安）。日本語の文字は日本語可の書体から選ぶ。位置は人物の下（基本）。
 --spec があれば、3案それぞれ提出用フォーマット（compose.py）まで作って送る（DIR/opt1〜3/）。画面で「案○にする」を押すと、その場で一覧に登録される。
 --spec が無いときだけ、選ばれたあとに candidates.py chosen ID DIR/design.jpg → compose.py → register.py。
 """
@@ -13,8 +13,9 @@ import cv2
 from textlayer import apply, STYLES
 from common import api, b64file
 
-NAMES = {'pirate': '海賊風', 'script': '筆記体', 'pop': 'ポップ', 'gold': 'ゴールド', 'elegant': 'エレガント'}
-WIDTH = {'pirate': 1500, 'script': 1550, 'pop': 1450, 'gold': 1450, 'elegant': 1500}
+from textlayer import JPFONTS, has_jp
+NAMES = {k: v['jp'] for k, v in STYLES.items()}
+WIDTH = {'script': 1550, 'pop': 1450, 'gold': 1450, 'comic': 1450, 'luxury': 1450}
 
 ap = argparse.ArgumentParser()
 ap.add_argument('dir'); ap.add_argument('--cand', default=''); ap.add_argument('--text', required=True)
@@ -31,7 +32,9 @@ if '|' not in text and len(text) > 18 and ' ' in text:  # 長い文言は2行に
 two = '|' in text
 res, opts = [], []
 for i, st in enumerate(styles):
+    st = {v['jp']: k for k, v in STYLES.items()}.get(st, st)
     if st not in STYLES: sys.exit('不明な飾り方：' + st)
+    if has_jp(text) and STYLES[st]['font'] not in JPFONTS: sys.exit(f'日本語の文字は {STYLES[st]["jp"]} では書けません（jpop / fude / wamodern / maru / kawaii / gokubuto から選ぶ）')
     out = os.path.join(a.dir, f'text{i + 1}.jpg')
     w = WIDTH.get(st, 1500) * (0.62 if two else 1)
     r = apply(os.path.join(a.dir, 'design.jpg'), out, text, st, width=w, rotate=rots[i])
