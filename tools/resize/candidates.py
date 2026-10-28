@@ -44,6 +44,9 @@ elif cmd == 'add':
         if it['id'] in known: continue
         try:
             im = load_url(it.pop('photo_url')); stem = os.path.splitext(it.pop('photo_name', 'photo'))[0]
+            from ready import check
+            ok, why = check(im.shape[1], im.shape[0])
+            if ok: it['notes'] = '【リサイズ不要：' + why + '】そのまま提出用を作ります\n' + str(it.get('notes') or '')
             it['photo'] = enc(im, 4000, 92, f'リサイズ元_{stem}.jpg'); it['thumb'] = enc(im, 700, 80, f'リサイズ元_{stem}_小.jpg')
             r = api({'action': 'resizeAdd', 'items': [it]}); added += r.get('added', 0)
             print(it['id'], r)

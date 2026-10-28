@@ -26,3 +26,7 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 - 画面で「案○にする」を押すと「文字案決定」→ 次の定期チェックで `candidates.py chosen ID DIR/design.jpg` → `compose.py` → `register.py`。
 - 文字は書体で描く（`textlayer.py`、AIに描かせない）。位置の基本は人物の下（白い範囲の下端）。飾り方は pirate（海賊風）・script（筆記体）・pop（ポップ）・gold（ゴールド）・elegant（エレガント）から背景に合う3つ。
 - 書体は `fonts/`（@fontsource、OFL）。
+
+## リサイズ不要の見分け
+- `ready.py SRC --out DIR`：すでに横長1440×1024と同じ比率（±2%）で横幅1440px以上なら「リサイズ不要」。背景は広げず 2880×2048 にそろえた DIR/design.jpg を作る → （文字入れ）→ compose → register（メモに「リサイズ不要」）。
+- 候補を拾うとき（candidates.py add）も同じ判定で、説明の先頭に【リサイズ不要：…】を付ける。
