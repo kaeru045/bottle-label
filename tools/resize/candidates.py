@@ -74,7 +74,7 @@ elif cmd == 'fixsrc':  # python3 candidates.py fixsrc 一覧のID OUTPATH … �
     it = c['item']; st = ''
     try: st = json.loads(it.get('文字案') or '[]')[int(it.get('文字選択'))]['style']
     except Exception: pass
-    print(json.dumps({'cand': it['ID'], 'src': sys.argv[3], '説明': it.get('説明', ''), '文字': it.get('文字', ''), '文字の飾り': st}, ensure_ascii=False))
+    print(json.dumps({'cand': it['ID'], 'src': sys.argv[3], '説明': it.get('説明', ''), '文字': it.get('文字', ''), '文字の飾り': st, '大きさ': it.get('大きさ', '') or '標準'}, ensure_ascii=False))
 elif cmd == 'fixstate':  # python3 candidates.py fixstate 一覧のID 状態（生成中|… / エラー:理由）
     print(json.dumps(api({'action': 'fixState', 'id': sys.argv[2], 'state': sys.argv[3]}), ensure_ascii=False))
 elif cmd == 'chosen':  # python3 candidates.py chosen ID OUTPATH … 画面で選ばれた文字案のデザイン画像（2880×2048）
