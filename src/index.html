@@ -200,7 +200,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/28 11:50</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/28 12:00</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -237,7 +237,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
         </div>
         <div id="wideDev" class="devblock" hidden>
           <h3>横長リサイズ（1440×1024・人物写真）</h3>
-          <p class="tiny">縦長の写真を、フォーマット（上下・左右の帯）に合わせて横長にします。背景はChatGPTかPhotoshopで描き足し、人物は元の写真のまま重ね直します。</p>
+          <p class="tiny">縦長の写真を、フォーマット（上下・左右の帯）に合わせて横長にします。背景はPhotoshopの生成塗りつぶしで描き足し、人物は元の写真のまま重ね直します。</p>
           <button type="button" class="primary" id="wideOpen">🖼️ 横長リサイズを開く</button>
         </div>
       </div>
@@ -463,17 +463,12 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
       <div class="row"><label for="wideZ">人物の大きさ</label><input type="range" id="wideZ" min="70" max="130" step="1" value="100"><output id="wideZOut">100%</output></div>
       <div class="links"><button class="link" id="wideRePlace" type="button">フォーマットの位置に置き直す</button></div>
       <h3>④ 背景を描き足す</h3>
-      <p class="tiny">生成用画像を保存して、下のプロンプトと一緒に<a href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT</a>に入れてください。Photoshopの場合は「透明」の方を開いて、生成拡張・生成塗りつぶしで透明部分を埋めます。</p>
-      <textarea id="widePrompt" readonly rows="6" aria-label="ChatGPT用プロンプト"></textarea>
-      <div class="btns">
-        <button type="button" id="wideCopy">プロンプトをコピー</button>
-        <button type="button" class="primary" id="wideSaveIn">生成用画像を保存（余白は白・ChatGPT用）</button>
-        <button type="button" id="wideSaveInT">生成用画像を保存（余白は透明・Photoshop用）</button>
-      </div>
+      <p class="tiny">生成用画像（余白は透明、2880×2048px）を保存して、Photoshopで開きます。<b>自動選択ツールで透明部分をクリック →「選択範囲」→「選択範囲を変更」→「拡張」で8px ほど広げる →「生成塗りつぶし」</b>（プロンプトは空欄のまま）で背景を描き足し、PNGで保存してください。</p>
+      <button type="button" class="primary" id="wideSaveIn">生成用画像を保存（Photoshop用）</button>
       <h3>⑤ 生成した画像を戻す</h3>
       <label class="drop" id="wideDropGen">
         <img id="wideThumbGen" alt="">
-        <span class="t"><b id="wideNameGen">未選択</b><span>ChatGPT・Photoshopで背景を描き足した画像</span></span>
+        <span class="t"><b id="wideNameGen">未選択</b><span>Photoshopで背景を描き足した画像（PNG）</span></span>
         <input type="file" id="wideFileGen" accept="image/*">
       </label>
       <button type="button" id="wideAlign">自動で位置合わせ</button>
@@ -1324,11 +1319,9 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     const W = 1440, H = 1024, SAFE_W = {x0:134, x1:1306, y0:254, y1:917};
     const HEAD_TOP = 270, HEAD_H = 360;
     const POS_LABEL = {center:'中央', left:'左寄せ', right:'右寄せ'};
-    const WIDE_PROMPT = "添付画像は、横長（1440×1024px）の画像の中に人物の写真を置いたものです。白い余白の部分だけに、写真の背景（壁・花・小物・光の雰囲気）が自然につながるように描き足して、1枚の横長の写真にしてください。\n・人物の顔・髪・体・服・手・アクセサリーや、写真に写っている小物は、形も色も位置も変えないでください。\n・新しい人物、手や腕、文字、ロゴ、枠は追加しないでください。\n・写真の部分の位置と大きさはそのままにし、画像の縦横比（横長 1440×1024）を変えないでください。";
     const cv = $('wideCv'), cx = cv.getContext('2d');
     let photo = null, box = null, pl = null, pos = 'center', gen = null, ga = {k:1, dx:0, dy:0}, maskCache = null, aligning = false;
     const wStatus = (t, err) => { const s = $('wideStatus'); s.textContent = t; s.classList.toggle('err', !!err); };
-    $('widePrompt').value = WIDE_PROMPT;
 
     // 頭の枠（写真の座標）からフォーマットの位置を計算する
     function place(){
@@ -1492,34 +1485,29 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
         b = await run(4, range(-.02, .02, .005), range(-12, 12, 3), b);
         b = await run(2, range(-.004, .004, .002), range(-3, 3, 1), b);
         setGa(b.k, b.dx, b.dy); draw();
-        const q = b.cost < 6 ? 'よく合っています' : b.cost < 12 ? 'だいたい合っています。二重に見えるところがないか確認してください' : '合わせきれませんでした。生成で人物が描き変わっている可能性があります。スライダーで合わせるか、作り直してください';
+        const q = b.cost < 6 ? 'よく合っています' : b.cost < 12 ? 'だいたい合っています。二重に見えるところがないか確認してください' : '合わせきれませんでした。Photoshopで画像の大きさや位置が変わっている可能性があります。スライダーで合わせるか、作り直してください';
         wStatus(`位置合わせ：拡大 ${(b.k*100).toFixed(1)}%・左右 ${Math.round(b.dx)}・上下 ${Math.round(b.dy)}（ずれ ${b.cost.toFixed(1)}：${q}）。`, b.cost >= 12);
       } finally { aligning = false; $('wideAlign').disabled = false; }
     }
     $('wideAlign').addEventListener('click', () => { if (!gen) { wStatus('先に⑤で生成した画像を入れてください。', true); return; } align(); });
 
-    $('wideCopy').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(WIDE_PROMPT); wStatus('プロンプトをコピーしました。'); }
-      catch (e) { const t = $('widePrompt'); t.focus(); t.select(); wStatus('自動でコピーできませんでした。選択された文字をコピーしてください。', true); }
-    });
     const wName = () => ($('wideName').value.trim() || 'design').replace(/[\\/:*?"<>|]/g, '_');
     async function wSave(filename, blob){
       if (!downloads) { wStatus('この表示では保存できません。', true); return; }
       try { await downloads.save({filename, data: blob}); wStatus(`${filename} を保存しました。`); }
       catch (e) { const code = (e && e.code) || 'unknown'; wStatus(code === 'declined' ? '保存をキャンセルしました。' : `保存できませんでした（${code}）。`, code !== 'declined'); }
     }
-    // 生成用画像は 2倍（2880×2048）で書き出す
+    // 生成用画像は 2倍（2880×2048）・余白は透明で書き出す（Photoshop の生成塗りつぶし用）
     const saveInput = bg => async () => {
       if (!photo) { wStatus('先に①で写真を入れてください。', true); return; }
       const c = document.createElement('canvas'); c.width = W*2; c.height = H*2; const g0 = gen; gen = null;
       compose(c.getContext('2d'), 2, {bg}); gen = g0;
-      wSave(`${wName()}_生成用_${POS_LABEL[pos]}_${bg === 'white' ? '白' : '透明'}.png`, await toBlob(c, 'image/png'));
+      wSave(`${wName()}_生成用_${POS_LABEL[pos]}.png`, await toBlob(c, 'image/png'));
     };
-    $('wideSaveIn').addEventListener('click', saveInput('white'));
-    $('wideSaveInT').addEventListener('click', saveInput('none'));
+    $('wideSaveIn').addEventListener('click', saveInput('none'));
     $('wideSave').addEventListener('click', async () => {
       if (!photo) { wStatus('先に①で写真を入れてください。', true); return; }
-      if (!gen) { wStatus('背景がまだ描き足されていません。④で生成用画像を作り、⑤で生成した画像を入れてください。', true); return; }
+      if (!gen) { wStatus('背景がまだ描き足されていません。④で生成用画像を保存してPhotoshopで背景を描き足し、⑤でその画像を入れてください。', true); return; }
       const c = document.createElement('canvas'); c.width = W; c.height = H; compose(c.getContext('2d'), 1, {overlay: true});
       wSave(`${wName()}_横長_${POS_LABEL[pos]}.png`, await toBlob(c, 'image/png'));
     });
