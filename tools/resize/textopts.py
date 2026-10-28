@@ -15,7 +15,7 @@ from common import api, b64file
 
 from textlayer import JPFONTS, has_jp, changes_case
 NAMES = {k: v['jp'] for k, v in STYLES.items()}
-WIDTH = {'script': 1550, 'pop': 1450, 'gold': 1450, 'comic': 1450, 'luxury': 1450}
+WIDTH = {'script': 1860, 'pop': 1740, 'gold': 1740, 'comic': 1740, 'luxury': 1740}  # 2026-10-28 に20%大きく（ユーザー指定）
 
 ap = argparse.ArgumentParser()
 ap.add_argument('dir'); ap.add_argument('--cand', default=''); ap.add_argument('--text', required=True)
@@ -37,7 +37,7 @@ for i, st in enumerate(styles):
     if changes_case(st, text): sys.exit(f'{STYLES[st]["jp"]} は全部大文字に見える書体なので「{text}」には使えません（文字は変えない。別の書体を選ぶ）')
     if has_jp(text) and STYLES[st]['font'] not in JPFONTS: sys.exit(f'日本語の文字は {STYLES[st]["jp"]} では書けません（jpop / fude / wamodern / maru / kawaii / gokubuto から選ぶ）')
     out = os.path.join(a.dir, f'text{i + 1}.jpg')
-    w = WIDTH.get(st, 1500) * (0.62 if two else 1)
+    w = WIDTH.get(st, 1800) * (0.62 if two else 1)
     r = apply(os.path.join(a.dir, 'design.jpg'), out, text, st, width=w, rotate=rots[i])
     for _ in range(4):  # 白い範囲からはみ出す・顔に重なるときは小さく
         if not (r['outside_safe'] or r['over_face']): break

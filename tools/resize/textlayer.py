@@ -200,7 +200,7 @@ def _contrast(im, t, x0, y0):
     return float(lum(sub[..., :3].astype(np.float32))[core].mean()), float(lum(bg.astype(np.float32))[ring].mean())
 
 
-def apply(design, out_path, text, style, cx=None, cy=None, width=1500, rotate=0, placement='', color1='', color2=''):
+def apply(design, out_path, text, style, cx=None, cy=None, width=1800, rotate=0, placement='', color1='', color2=''):
     """文字を入れて out_path に書き出す。cx/cy が無ければ人物の下（白い範囲の下端）。"""
     style = {v['jp']: k for k, v in STYLES.items()}.get(style, style)
     if changes_case(style, text): raise SystemExit(f'「{STYLES[style]["jp"]}」は全部大文字に見える書体なので、小文字を含む「{text}」には使えません（文字は依頼のまま変えない）')
@@ -237,7 +237,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('design'); ap.add_argument('out'); ap.add_argument('--text', required=True); ap.add_argument('--style', required=True, help='STYLES のキー（pirate など）か日本語の名前（海賊風など）。python3 textlayer.py --list で一覧')
     ap.add_argument('--cx', type=float); ap.add_argument('--cy', type=float); ap.add_argument('--placement', default='')
-    ap.add_argument('--width', type=float, default=1500); ap.add_argument('--rotate', type=float, default=0)
+    ap.add_argument('--width', type=float, default=1800); ap.add_argument('--rotate', type=float, default=0)
     ap.add_argument('--color1', default=''); ap.add_argument('--color2', default='')
     a = ap.parse_args()
     print(json.dumps(apply(a.design, a.out, a.text, a.style, a.cx, a.cy, a.width, a.rotate, a.placement, a.color1, a.color2), ensure_ascii=False))
