@@ -30,6 +30,12 @@ FONTS = {'pirata': 'pirata-one', 'vibes': 'great-vibes', 'bangers': 'bangers', '
          'mochiy': 'mochiy-pop-one', 'zenantique': 'zen-antique', 'yuji': 'yuji-syuku', 'zenmaru': 'zen-maru-gothic',
          'hachimaru': 'hachi-maru-pop', 'dela': 'dela-gothic-one'}
 JPFONTS = {'mochiy', 'zenantique', 'yuji', 'zenmaru', 'hachimaru', 'dela'}
+# 小文字が無く、全部大文字に見えてしまう書体。依頼の文字は変えないので、小文字を含む文言には使わない
+CAPSFONTS = {'bangers', 'cinzel', 'luckiest', 'marker'}
+
+
+def changes_case(style, text):
+    return STYLES[style]['font'] in CAPSFONTS and any(c.islower() for c in text)
 
 G = lambda *c: 'linear-gradient(180deg,' + ','.join(c) + ')'
 SH = lambda *d: ' '.join(f'drop-shadow({x})' for x in d)
@@ -197,6 +203,7 @@ def _contrast(im, t, x0, y0):
 def apply(design, out_path, text, style, cx=None, cy=None, width=1500, rotate=0, placement='', color1='', color2=''):
     """文字を入れて out_path に書き出す。cx/cy が無ければ人物の下（白い範囲の下端）。"""
     style = {v['jp']: k for k, v in STYLES.items()}.get(style, style)
+    if changes_case(style, text): raise SystemExit(f'「{STYLES[style]["jp"]}」は全部大文字に見える書体なので、小文字を含む「{text}」には使えません（文字は依頼のまま変えない）')
     im = cv2.imread(design); assert im is not None and im.shape[1] == W, 'デザイン画像は 2880×2048'
     st = dict(STYLES[style])
     t = asyncio.run(render(text, st, width, rotate, color1, color2))
@@ -225,7 +232,7 @@ def apply(design, out_path, text, style, cx=None, cy=None, width=1500, rotate=0,
 
 def main():
     if '--list' in sys.argv:
-        for k, v in STYLES.items(): print(f"{k:10s} {v['jp']}{'（日本語可）' if v['font'] in JPFONTS else ''}：{v['mood']}")
+        for k, v in STYLES.items(): print(f"{k:10s} {v['jp']}{'（日本語可）' if v['font'] in JPFONTS else ''}{'（大文字だけの文言のみ）' if v['font'] in CAPSFONTS else ''}：{v['mood']}")
         return
     ap = argparse.ArgumentParser()
     ap.add_argument('design'); ap.add_argument('out'); ap.add_argument('--text', required=True); ap.add_argument('--style', required=True, help='STYLES のキー（pirate など）か日本語の名前（海賊風など）。python3 textlayer.py --list で一覧')

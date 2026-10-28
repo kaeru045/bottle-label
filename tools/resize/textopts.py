@@ -13,7 +13,7 @@ import cv2
 from textlayer import apply, STYLES
 from common import api, b64file
 
-from textlayer import JPFONTS, has_jp
+from textlayer import JPFONTS, has_jp, changes_case
 NAMES = {k: v['jp'] for k, v in STYLES.items()}
 WIDTH = {'script': 1550, 'pop': 1450, 'gold': 1450, 'comic': 1450, 'luxury': 1450}
 
@@ -34,6 +34,7 @@ res, opts = [], []
 for i, st in enumerate(styles):
     st = {v['jp']: k for k, v in STYLES.items()}.get(st, st)
     if st not in STYLES: sys.exit('不明な飾り方：' + st)
+    if changes_case(st, text): sys.exit(f'{STYLES[st]["jp"]} は全部大文字に見える書体なので「{text}」には使えません（文字は変えない。別の書体を選ぶ）')
     if has_jp(text) and STYLES[st]['font'] not in JPFONTS: sys.exit(f'日本語の文字は {STYLES[st]["jp"]} では書けません（jpop / fude / wamodern / maru / kawaii / gokubuto から選ぶ）')
     out = os.path.join(a.dir, f'text{i + 1}.jpg')
     w = WIDTH.get(st, 1500) * (0.62 if two else 1)
