@@ -4,7 +4,7 @@
   python3 place.py SRC --box x0,y0,x1,y1 --kind head|content [--pos center|left|right] --out DIR
 
 --box は元画像の座標で、必ず白い範囲に入れたいもの：
-  head    … 人物写真。髪のてっぺん〜あごの四角。頭の上端を 540px（仕上がり270px）、高さを 720px（360px）にそろえる。
+  head    … 人物写真。髪のてっぺん〜あごの四角。頭の上端を 540px（仕上がり270px）、高さを HEAD_H（標準 414px＝仕上がり、もとの360pxの1.15倍）にそろえる。
   content … デザイン画像など。顔・文字・ロゴなど大事なものを全部囲む四角。白い範囲いっぱい（4% 余白）に収める。
 出力：DIR/input.png（キャンバスに入る部分だけ、縮小済み）と DIR/placement.json（広げる量など）
 """
@@ -16,6 +16,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('src'); ap.add_argument('--box', required=True); ap.add_argument('--kind', choices=['head', 'content'], required=True)
 ap.add_argument('--pos', choices=['center', 'left', 'right'], default='center'); ap.add_argument('--out', required=True)
 ap.add_argument('--zoom', type=float, default=1.0, help='大きさの調整（1.15＝15%大きく）。修正依頼「人物をもっと大きく」など')
+ap.add_argument('--size', choices=['小さめ', '標準', '大きめ', '特大'], default='標準', help='管理サイトの「人物の大きさ」（zoom に掛ける：小さめ0.87・大きめ1.15・特大1.3）')
 ap.add_argument('--dx', type=float, default=0, help='左右に動かす量（仕上がりのpx、＋で右）'); ap.add_argument('--dy', type=float, default=0, help='上下に動かす量（仕上がりのpx、＋で下）')
 a = ap.parse_args()
 
@@ -29,8 +30,11 @@ if bw <= 0 or bh <= 0:
     sys.exit('--box が不正です')
 
 sw, sh = SAFE['x1'] - SAFE['x0'], SAFE['y1'] - SAFE['y0']
+HEAD_H = 414  # 仕上がりpxでの頭の高さ（標準）。2026-10-28 に 360 → 414（ひと回り大きく）
+a.zoom *= {'小さめ': 0.87, '標準': 1.0, '大きめ': 1.15, '特大': 1.3}[a.size]
 if a.kind == 'head':
-    s = 360 * K / bh
+    s = HEAD_H * K / bh * a.zoom  # 頭の上端は 270 のまま、下に向かって大きくする
+    a.zoom = 1.0
     if bw * s > sw * 0.96:  # 横に広い頭（帽子など）は幅で縮める
         s = sw * 0.96 / bw
     y = 270 * K - y0 * s
