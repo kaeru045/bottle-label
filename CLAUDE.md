@@ -31,6 +31,6 @@
 - 保存名：`<名前>提出用.jpg/pdf`、`<名前>デザイン画像.jpg`、`<名前>タグ_<種類>.png`。
 - 手動リサイズは開発中：`#resizeDev` ブロック、URL に `#dev` を付けたときだけ表示。公開側は ChatGPT プロンプトの案内文のみ。
 - タグの文字切り出し（`#cutFeature`）も開発中扱いで、`#dev` のときだけ表示。
-- 横長リサイズ（`#wideDev` → `#wideModal`）も開発中扱いで、`#dev` のときだけ表示。帯の数値（上下254/917px・左右134/1306px）はユーザーが「必ず守る」と指定したフォーマット。頭は上端270px・高さ360pxに置く（自動リサイズ tools/resize は標準414px＝ひと回り大きく、ユーザー指定 2026-10-28）。背景の描き足しは Photoshop のみ（ユーザー指定、ChatGPT 用のプロンプト・白余白の書き出しは削除済み）。生成した画像の位置合わせは、写真の内側の明るさ（平均を引いた差）が最小になる拡大・位置を 1/8→1/4→1/2 の解像度で探す。貼り付けは既存の `pick`／`pasteTargets` を使い、開いたら貼り付け先を写真（読み込み後は生成画像）に切り替える。
+- 横長リサイズ（`#wideDev` → `#wideModal`）も開発中扱いで、`#dev` のときだけ表示。帯の数値（上下254/917px・左右134/1306px）はユーザーが「必ず守る」と指定したフォーマット。頭は上端270px・高さ360pxに置く（自動リサイズ tools/resize は標準605px＝さらに1.4倍、文字も1.4倍。ユーザー指定 2026-10-29）。背景の描き足しは Photoshop のみ（ユーザー指定、ChatGPT 用のプロンプト・白余白の書き出しは削除済み）。生成した画像の位置合わせは、写真の内側の明るさ（平均を引いた差）が最小になる拡大・位置を 1/8→1/4→1/2 の解像度で探す。貼り付けは既存の `pick`／`pasteTargets` を使い、開いたら貼り付け先を写真（読み込み後は生成画像）に切り替える。
 - 横長リサイズの自動背景拡張：`worker/firefly-proxy.js`（Cloudflare Worker）が Firefly API（IMS client_credentials → `/v2/storage/image` → `/v3/images/expand-async`、`placement.inset` で位置指定 → statusUrl をポーリング）を呼ぶ。シークレット `FIREFLY_CLIENT_ID`／`FIREFLY_CLIENT_SECRET`／`TOOL_PASS`。無料プランの外部通信50回/リクエストに収めるため、ポーリングは2秒×最大40回。ツール側の URL・合言葉は localStorage（`wideApi`／`widePass`）。Artifact 版は外部 fetch 不可なので自動は GitHub Pages 版のみ。
 - 公開ページにお客様のロゴ等のサンプルを入れない。
