@@ -3,7 +3,7 @@
 
   python3 candidates.py known                     … 登録済みの候補ID一覧
   python3 candidates.py add ITEMS.json            … 候補を登録（Asanaの添付写真をダウンロードしてサムネと一緒に送る）。全自動：登録と同時に「リサイズ依頼」にする
-      ITEMS.json: [{"id":"<タスクgid>-<添付gid>","order","shop","name","due","asana","notes","spec":{...},"photo_url","photo_name"}, ...]
+      ITEMS.json: [{"id":"<タスクgid>-<添付gid>","order","shop","name","due","asana","notes","spec":{...},"text":"<文字入れの文言（任意）>","photo_url","photo_name"}, ...]
   python3 candidates.py queue                     … 「リサイズする」が押された候補（状態「文字案決定」＝文字案が選ばれたものも）
   python3 candidates.py chosen ID OUTPATH         … 選ばれた文字案のデザイン画像
   python3 candidates.py src ID OUTPATH            … 候補の元画像をダウンロード
