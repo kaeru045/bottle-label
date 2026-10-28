@@ -160,6 +160,10 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 .wideside .seg button{flex:1;padding:8px 12px;font-size:13px}
 .wideside .row label{width:84px}
 .wideside textarea{font:12px/1.5 var(--f-body);color:var(--fg);background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:8px;width:100%;box-sizing:border-box;resize:vertical}
+.widepass{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;width:100%;box-sizing:border-box}
+#wideSetup{display:flex;flex-direction:column;gap:6px}
+#wideSetup[open]{border:1.5px solid var(--line);border-radius:12px;padding:8px}
+#wideSetup summary{cursor:pointer}
 .widecheck{margin:0;font-size:13px;font-weight:700;line-height:1.6;color:var(--muted)}
 .widecheck.ok{color:#19a35f}
 .widecheck.ng{color:var(--warn)}
@@ -201,7 +205,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/28 12:00</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/28 12:20</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -464,6 +468,14 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
       <div class="row"><label for="wideZ">人物の大きさ</label><input type="range" id="wideZ" min="70" max="130" step="1" value="100"><output id="wideZOut">100%</output></div>
       <div class="links"><button class="link" id="wideRePlace" type="button">フォーマットの位置に置き直す</button></div>
       <h3>④ 背景を描き足す</h3>
+      <button type="button" class="primary" id="wideAuto">✨ Adobeで背景を広げる（自動）</button>
+      <details id="wideSetup">
+        <summary class="tiny">中継サーバーの設定（最初の1回だけ）</summary>
+        <div class="row"><label for="wideApi">URL</label><input type="text" id="wideApi" placeholder="https://〇〇.workers.dev" autocomplete="off"></div>
+        <div class="row"><label for="widePass">合言葉</label><input type="password" id="widePass" autocomplete="off" class="widepass"></div>
+        <p class="tiny">このパソコン・ブラウザにだけ保存されます。</p>
+      </details>
+      <p class="tiny">自動が使えないときは、下の生成用画像をPhotoshopで広げてください。</p>
       <p class="tiny">生成用画像（余白は透明、2880×2048px）を保存して、Photoshopで開きます。<b>自動選択ツールで透明部分をクリック →「選択範囲」→「選択範囲を変更」→「拡張」で8px ほど広げる →「生成塗りつぶし」</b>（プロンプトは空欄のまま）で背景を描き足し、PNGで保存してください。</p>
       <button type="button" class="primary" id="wideSaveIn">生成用画像を保存（Photoshop用）</button>
       <h3>⑤ 生成した画像を戻す</h3>
@@ -1916,6 +1928,37 @@ https://github.com/nodeca/pako/blob/main/LICENSE
       wSave(`${wName()}_生成用_${POS_LABEL[pos]}.png`, await toBlob(c, 'image/png'));
     };
     $('wideSaveIn').addEventListener('click', saveInput('none'));
+
+    // 自動：写真のうちキャンバスに入る部分だけを送り、中継サーバー（worker/firefly-proxy.js）経由で Adobe の生成拡張をかける
+    const LS = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+    const LSset = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+    $('wideApi').value = LS('wideApi'); $('widePass').value = LS('widePass');
+    ['wideApi','widePass'].forEach(id => $(id).addEventListener('change', () => LSset(id, $(id).value.trim())));
+    $('wideAuto').addEventListener('click', async () => {
+      if (!photo || !pl) { wStatus('先に①で写真を入れてください。', true); return; }
+      const api = $('wideApi').value.trim().replace(/\/+$/, ''), pass = $('widePass').value.trim();
+      if (!api || !pass) { $('wideSetup').open = true; wStatus('中継サーバーの URL と合言葉を入れてください（最初の1回だけ）。', true); return; }
+      // 写真のうち、1440×1024 の中に入る部分（はみ出しは切る）
+      const pw = photo.naturalWidth * pl.s, ph = photo.naturalHeight * pl.s;
+      const x0 = Math.max(0, Math.round(pl.x)), y0 = Math.max(0, Math.round(pl.y));
+      const x1 = Math.min(W, Math.round(pl.x + pw)), y1 = Math.min(H, Math.round(pl.y + ph));
+      if (x1 - x0 < 50 || y1 - y0 < 50) { wStatus('写真がキャンバスの外に出ています。', true); return; }
+      const c = document.createElement('canvas'); c.width = x1 - x0; c.height = y1 - y0;
+      c.getContext('2d').drawImage(photo, pl.x - x0, pl.y - y0, pw, ph);
+      const q = new URLSearchParams({w: W, h: H, left: x0, top: y0, right: W - x1, bottom: H - y1});
+      const btn = $('wideAuto'), label = btn.textContent; btn.disabled = true; btn.textContent = '背景を広げています…（30秒ほど）';
+      wStatus('Adobe で背景を広げています。そのまま待ってください…');
+      try {
+        const r = await fetch(`${api}/expand?${q}`, {method: 'POST', headers: {'Content-Type': 'image/png', 'X-Tool-Pass': pass}, body: await toBlob(c, 'image/png')});
+        if (!r.ok) { let m = `エラー（${r.status}）`; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
+        const url = URL.createObjectURL(await r.blob()), img = await load(url);
+        // 位置を指定して広げているので、位置合わせは不要（ずれなし）
+        gen = img; $('wideNameGen').textContent = 'Adobeで自動生成'; $('wideThumbGen').src = url; setGa(1, 0, 0); draw();
+        wStatus('背景を広げました。体の先に手などが描き足されていないか確認して、⑥で保存してください。気になるときはもう一度押すと別のパターンになります。');
+      } catch (e) {
+        wStatus(`背景を広げられませんでした：${e.message || e}`, true);
+      } finally { btn.disabled = false; btn.textContent = label; }
+    });
     $('wideSave').addEventListener('click', async () => {
       if (!photo) { wStatus('先に①で写真を入れてください。', true); return; }
       if (!gen) { wStatus('背景がまだ描き足されていません。④で生成用画像を保存してPhotoshopで背景を描き足し、⑤でその画像を入れてください。', true); return; }

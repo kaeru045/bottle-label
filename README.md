@@ -121,6 +121,29 @@
   - 生成用画像（2880×2048、余白は透明）を出す → Photoshop の生成塗りつぶしで背景を描き足す（ChatGPT は人物まで描き変えるので使わない）
   - 生成した画像を戻すと、写真の部分の明るさで自動で位置合わせし、元の写真をふちをなじませて重ね直す（人物は元のピクセルのまま）
   - 保存名：`<名前>_横長_中央.png`（1440×1024）、`<名前>_生成用_中央.png`
+  - **自動（✨ Adobeで背景を広げる）**：写真を中継サーバー（`worker/firefly-proxy.js`、Cloudflare Workers）に送り、Adobe Firefly API の生成拡張で背景を広げる。位置を指定して広げるので位置合わせは不要。API キーは中継サーバーにだけ置く
+
+### 自動の背景拡張の準備（最初の1回だけ）
+
+**A. Adobe のキーを発行する**
+1. https://developer.adobe.com/console にログイン →「新規プロジェクトを作成」
+2. 「API を追加」→「Firefly API」（Firefly Services）を選ぶ。認証方式は「OAuth サーバー間」
+3. 作ったプロジェクトの「OAuth サーバー間」を開き、**クライアント ID** と **クライアントシークレット**（「クライアントシークレットを取得」）を控える
+   - 「Firefly API」が選べない場合は、Adobe の法人契約（Firefly Services）が必要です
+
+**B. 中継サーバーを作る（Cloudflare・無料）**
+1. https://dash.cloudflare.com でアカウントを作成してログイン
+2. 「Workers & Pages」→「作成」→「Worker を作成」→ 名前を `firefly-proxy` にして「デプロイ」
+3. 「コードを編集」を開き、`worker/firefly-proxy.js` の中身を全部貼り付けて「デプロイ」
+4. Worker の「設定」→「変数とシークレット」で、種類「シークレット」で3つ追加
+   - `FIREFLY_CLIENT_ID`：A で控えたクライアント ID
+   - `FIREFLY_CLIENT_SECRET`：A で控えたクライアントシークレット
+   - `TOOL_PASS`：社内で決めた合言葉
+5. Worker の URL（`https://firefly-proxy.〇〇.workers.dev`）を控える
+
+**C. ツールに設定する**
+1. https://kaeru045.github.io/bottle-label/#dev →「🖼️ 横長リサイズを開く」
+2. ④の「中継サーバーの設定」に B の URL と合言葉を入れる（そのブラウザに保存されるので、使う人ごとに1回）
 
 ---
 
