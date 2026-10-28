@@ -20,3 +20,9 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 2. 修正内容に合わせて `place.py`（`--pos` `--zoom` `--dx` `--dy`）→ 生成拡張（3回に分けて）→ `finish.py` → `compose.py`（仕様の変更があれば spec を変える）
 3. `register.py ... --fix "<修正内容>"`（同じ注文・名前で登録 → 版が上がり、修正前は履歴に残り、修正指示が消えて「修正済み」になる）
 4. 失敗したら `candidates.py fixstate <一覧のID> "エラー:<理由>"`
+
+## 文字入れ（文字例3案）
+- 候補の「文字」（管理サイトの「文字入れ（任意）」欄）に文言があると、リサイズ後に `textopts.py DIR --cand ID --text '…' --styles a,b,c` で文字例を3案作って送る → 候補は「文字案選択」。
+- 画面で「案○にする」を押すと「文字案決定」→ 次の定期チェックで `candidates.py chosen ID DIR/design.jpg` → `compose.py` → `register.py`。
+- 文字は書体で描く（`textlayer.py`、AIに描かせない）。位置の基本は人物の下（白い範囲の下端）。飾り方は pirate（海賊風）・script（筆記体）・pop（ポップ）・gold（ゴールド）・elegant（エレガント）から背景に合う3つ。
+- 書体は `fonts/`（@fontsource、OFL）。

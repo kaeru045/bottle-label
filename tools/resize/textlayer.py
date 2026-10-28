@@ -41,6 +41,10 @@ STYLES = {
 }
 
 
+# 画面に出す名前（管理サイトの文字案）→ 飾り方
+JP = {'海賊風': 'pirate', '筆記体': 'script', 'ポップ': 'pop', 'ゴールド': 'gold', 'エレガント': 'elegant'}
+
+
 def font_file(key, weight):
     name = FONTS[key]
     os.makedirs(FONTDIR, exist_ok=True)
@@ -84,36 +88,42 @@ async def render(text, st, width, rotate, c1, c2):
     return cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_UNCHANGED)
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('design'); ap.add_argument('out'); ap.add_argument('--text', required=True); ap.add_argument('--style', choices=list(STYLES), required=True)
-    ap.add_argument('--cx', type=float); ap.add_argument('--cy', type=float); ap.add_argument('--placement', default='')
-    ap.add_argument('--width', type=float, default=700); ap.add_argument('--rotate', type=float, default=0)
-    ap.add_argument('--color1', default=''); ap.add_argument('--color2', default='')
-    a = ap.parse_args()
-    im = cv2.imread(a.design); assert im is not None and im.shape[1] == W, 'デザイン画像は 2880×2048'
-    t = asyncio.run(render(a.text, STYLES[a.style], a.width, a.rotate, a.color1, a.color2))
+def apply(design, out_path, text, style, cx=None, cy=None, width=1500, rotate=0, placement='', color1='', color2=''):
+    """文字を入れて out_path に書き出す。cx/cy が無ければ人物の下（白い範囲の下端）。"""
+    style = JP.get(style, style)
+    im = cv2.imread(design); assert im is not None and im.shape[1] == W, 'デザイン画像は 2880×2048'
+    t = asyncio.run(render(text, STYLES[style], width, rotate, color1, color2))
     th, tw = t.shape[:2]
-    if a.cx is None or a.cy is None:  # 基本：人物の下
-        al0 = t[:, :, 3] > 40; ys0, xs0 = np.nonzero(al0)
-        pj = os.path.join(a.placement or os.path.dirname(os.path.abspath(a.design)), 'placement.json')
-        bx0 = json.load(open(pj))['box'] if os.path.exists(pj) else [SAFE[0], SAFE[1], SAFE[2], SAFE[1]]
-        vw = xs0.max() - xs0.min()
-        cx = min(max((bx0[0] + bx0[2]) / 2, SAFE[0] + vw / 2 + 20), SAFE[2] - vw / 2 - 20)
-        a.cx = cx - ((xs0.min() + xs0.max()) / 2 - tw / 2) if a.cx is None else a.cx
-        a.cy = (SAFE[3] - 30 - ys0.max()) + th / 2 if a.cy is None else a.cy
-    x0, y0 = int(round(a.cx - tw / 2)), int(round(a.cy - th / 2))
-    # 文字の見える部分が白い範囲に入っているか
     al = t[:, :, 3] > 40; ys, xs = np.nonzero(al)
+    pj = os.path.join(placement or os.path.dirname(os.path.abspath(design)), 'placement.json')
+    box = json.load(open(pj))['box'] if os.path.exists(pj) else None
+    if cx is None or cy is None:  # 基本：人物の下
+        b = box or [SAFE[0], SAFE[1], SAFE[2], SAFE[1]]
+        vw = xs.max() - xs.min()
+        c = min(max((b[0] + b[2]) / 2, SAFE[0] + vw / 2 + 20), SAFE[2] - vw / 2 - 20)
+        cx = c - ((xs.min() + xs.max()) / 2 - tw / 2) if cx is None else cx
+        cy = (SAFE[3] - 30 - ys.max()) + th / 2 if cy is None else cy
+    x0, y0 = int(round(cx - tw / 2)), int(round(cy - th / 2))
     bx = [x0 + xs.min(), y0 + ys.min(), x0 + xs.max(), y0 + ys.max()]
     ng = bx[0] < SAFE[0] or bx[1] < SAFE[1] or bx[2] > SAFE[2] or bx[3] > SAFE[3]
+    over = bool(box and bx[1] < box[3] and bx[0] < box[2] and bx[2] > box[0])  # 顔（大事な範囲）に重なる
     out = im.astype(np.float32)
     sx0, sy0, sx1, sy1 = max(0, x0), max(0, y0), min(W, x0 + tw), min(H, y0 + th)
     sub = t[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0].astype(np.float32)
     a_ = sub[:, :, 3:4] / 255
     out[sy0:sy1, sx0:sx1] = out[sy0:sy1, sx0:sx1] * (1 - a_) + sub[:, :, :3] * a_
-    cv2.imwrite(a.out, np.clip(out, 0, 255).astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 95])
-    print(json.dumps({'out': a.out, 'text_box': [int(v) for v in bx], 'outside_safe': bool(ng)}, ensure_ascii=False))
+    cv2.imwrite(out_path, np.clip(out, 0, 255).astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 95])
+    return {'out': out_path, 'text_box': [int(v) for v in bx], 'outside_safe': bool(ng), 'over_face': over}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('design'); ap.add_argument('out'); ap.add_argument('--text', required=True); ap.add_argument('--style', required=True, help='pirate / script / pop / gold / elegant（海賊風・筆記体なども可）')
+    ap.add_argument('--cx', type=float); ap.add_argument('--cy', type=float); ap.add_argument('--placement', default='')
+    ap.add_argument('--width', type=float, default=1500); ap.add_argument('--rotate', type=float, default=0)
+    ap.add_argument('--color1', default=''); ap.add_argument('--color2', default='')
+    a = ap.parse_args()
+    print(json.dumps(apply(a.design, a.out, a.text, a.style, a.cx, a.cy, a.width, a.rotate, a.placement, a.color1, a.color2), ensure_ascii=False))
 
 
 if __name__ == '__main__':

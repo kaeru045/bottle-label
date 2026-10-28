@@ -4,7 +4,8 @@
   python3 candidates.py known                     … 登録済みの候補ID一覧
   python3 candidates.py add ITEMS.json            … 候補を登録（Asanaの添付写真をダウンロードしてサムネと一緒に送る）
       ITEMS.json: [{"id":"<タスクgid>-<添付gid>","order","shop","name","due","asana","notes","spec":{...},"photo_url","photo_name"}, ...]
-  python3 candidates.py queue                     … 「リサイズする」が押された候補
+  python3 candidates.py queue                     … 「リサイズする」が押された候補（状態「文字案決定」＝文字案が選ばれたものも）
+  python3 candidates.py chosen ID OUTPATH         … 選ばれた文字案のデザイン画像
   python3 candidates.py src ID OUTPATH            … 候補の元画像をダウンロード
   python3 candidates.py state ID 状態 [エラー文]   … 状態を変える（作成中・エラー など）
 """
@@ -65,9 +66,18 @@ elif cmd == 'fixsrc':  # python3 candidates.py fixsrc 一覧のID OUTPATH … �
     if not r.get('ok'): sys.exit(json.dumps(r, ensure_ascii=False))
     import base64
     open(sys.argv[3], 'wb').write(base64.b64decode(r['data']))
-    print(json.dumps({'cand': c['item']['ID'], 'src': sys.argv[3], '説明': c['item'].get('説明', '')}, ensure_ascii=False))
+    it = c['item']; st = ''
+    try: st = json.loads(it.get('文字案') or '[]')[int(it.get('文字選択'))]['style']
+    except Exception: pass
+    print(json.dumps({'cand': it['ID'], 'src': sys.argv[3], '説明': it.get('説明', ''), '文字': it.get('文字', ''), '文字の飾り': st}, ensure_ascii=False))
 elif cmd == 'fixstate':  # python3 candidates.py fixstate 一覧のID 状態（生成中|… / エラー:理由）
     print(json.dumps(api({'action': 'fixState', 'id': sys.argv[2], 'state': sys.argv[3]}), ensure_ascii=False))
+elif cmd == 'chosen':  # python3 candidates.py chosen ID OUTPATH … 画面で選ばれた文字案のデザイン画像（2880×2048）
+    r = api({'action': 'resizeTextChosen', 'id': sys.argv[2]})
+    if not r.get('ok'): sys.exit(json.dumps(r, ensure_ascii=False))
+    import base64
+    open(sys.argv[3], 'wb').write(base64.b64decode(r['data']))
+    print(json.dumps({k: v for k, v in r.items() if k != 'data'}, ensure_ascii=False))
 elif cmd == 'queue':
     print(json.dumps(api({'action': 'resizeQueue'}), ensure_ascii=False))
 elif cmd == 'src':
