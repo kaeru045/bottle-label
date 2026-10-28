@@ -76,6 +76,8 @@ header p{margin:0;color:#c6d2ff;text-shadow:0 0 8px rgba(0,229,255,.35)}
 .check input{accent-color:var(--accent)}
 input[type=text]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;width:100%;box-sizing:border-box}
 input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px}
+.row select{flex:1;min-width:0;font:inherit;font-size:13px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+#backColors{display:inline-flex;gap:6px}#backColors[hidden]{display:none}
 .btns{display:flex;flex-direction:column;gap:8px}
 button{font:inherit;font-weight:500;border-radius:999px;padding:9px 12px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
 button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(255,79,154,.3)}
@@ -205,7 +207,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/29 02:50</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/29 03:20</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -259,6 +261,13 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
         <div class="row"><label for="pos">上下位置</label><input type="range" id="pos" min="15" max="85" step="0.5" value="54.7"><output id="posOut">55%</output></div>
         <div class="row"><label for="shadow">影の強さ</label><input type="range" id="shadow" min="0" max="100" step="5" value="55"><output id="shadowOut">55</output></div>
         <div class="links"><button class="link" id="clearLogo" type="button">ロゴをクリア</button><button class="link" id="reset" type="button">標準の設定に戻す</button></div>
+        <h3>裏の文字（ロゴの代わりに文字を入れる）</h3>
+        <input type="text" id="backText" placeholder="例：酒を飲むなら、|粋に飲め（| で改行）" aria-label="裏の文字">
+        <div class="row"><label for="backDir">向き</label><select id="backDir"><option value="auto">自動</option><option value="v">縦書き</option><option value="h">横書き</option><option value="r">横書き（90°回す）</option></select></div>
+        <div class="row"><label for="backFont">書体</label><select id="backFont"></select></div>
+        <div class="row"><label for="backColorMode">色</label><select id="backColorMode"><option value="auto">デザインに合わせて自動</option><option value="pick">指定する</option></select><span id="backColors" hidden><input type="color" id="backC1" value="#fff3c4" aria-label="上の色"> <input type="color" id="backC2" value="#c8902a" aria-label="下の色"></span></div>
+        <div class="links"><button class="link" id="backApply" type="button">裏の文字を入れる</button></div>
+        <p class="tiny">大きさは左右の帯（背面）と上下の帯に収まるよう自動で決まります。文字は入れたとおりに描きます。</p>
       </div>
 
       <div class="step">
@@ -1679,53 +1688,119 @@ https://github.com/nodeca/pako/blob/main/LICENSE
   }
   window.__buildTagCanvas = buildTagCanvas; window.__TAGNAME = TAGNAME; // 管理サイトへの登録・保存でタグ画像も送る
 
-  // 裏の文字（Asanaの「裏：〇〇」）：文字を金の透過PNGにして「ロゴを裏に入れる」の位置に入れる。
-  // 文字は一字も変えない。行は「|」か改行で区切る（無ければ長いときだけ「、」などの後ろで2行に）。日本語は縦書き（2行目以降は下揃え）、英数字だけなら横書きを90°回す。
-  // 大きさはフォーマット内に収める（1440×1024換算：幅の半分≦約120px＝左右134pxの帯の内側、高さ≦600px・中心585px＝上下の帯にかからない）。
-  function backTextCanvas(text){
+  // 裏の文字（Asanaの「裏：〇〇」）：文字を透過PNGにして「ロゴを裏に入れる」の位置に入れる。文字は一字も変えない（行は「|」か改行。無ければ9文字以上のとき「、」などの後ろで2行に）。
+  // 向き dir：'v' 縦書き（2行目以降は下揃え）／'h' 横書き／'r' 横書きを90°回す／'auto'（日本語は縦書き、英数字だけなら90°）。
+  // 書体 font：BACKFONTS のキー（無ければ日本語は明朝・英字は playfair）。色 color1/color2（上→下）・stroke（縁）：無ければデザインの色から自動。
+  // 大きさはフォーマット内に自動で収める（1440×1024換算：幅≦240px＝左右134pxの帯の内側、高さ≦600px・中心585px＝上下の帯にかからない）。
+  const BACKFONTS = {
+    mincho:{label:'明朝', fam:'"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif', w:600, jp:1},
+    gothic:{label:'ゴシック', fam:'"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif', w:700, jp:1},
+    zenantique:{label:'和モダン', pkg:'zen-antique', fam:'Zen Antique', w:400, jp:1},
+    yuji:{label:'筆', pkg:'yuji-syuku', fam:'Yuji Syuku', w:400, jp:1},
+    dela:{label:'極太', pkg:'dela-gothic-one', fam:'Dela Gothic One', w:400, jp:1},
+    zenmaru:{label:'丸ゴシック', pkg:'zen-maru-gothic', fam:'Zen Maru Gothic', w:700, jp:1},
+    mochiy:{label:'ポップ', pkg:'mochiy-pop-one', fam:'Mochiy Pop One', w:400, jp:1},
+    hachimaru:{label:'手書き風', pkg:'hachi-maru-pop', fam:'Hachi Maru Pop', w:400, jp:1},
+    playfair:{label:'Playfair（上品）', pkg:'playfair-display', fam:'Playfair Display', w:700},
+    vibes:{label:'Great Vibes（筆記体）', pkg:'great-vibes', fam:'Great Vibes', w:400},
+    dancing:{label:'Dancing Script（筆記体）', pkg:'dancing-script', fam:'Dancing Script', w:700},
+    cinzel:{label:'Cinzel（大文字だけ）', pkg:'cinzel-decorative', fam:'Cinzel Decorative', w:700, caps:1},
+    lobster:{label:'Lobster', pkg:'lobster', fam:'Lobster', w:400},
+    pacifico:{label:'Pacifico', pkg:'pacifico', fam:'Pacifico', w:400},
+    caveat:{label:'Caveat（手書き）', pkg:'caveat', fam:'Caveat', w:700},
+    pirata:{label:'Pirata（海賊）', pkg:'pirata-one', fam:'Pirata One', w:400},
+    fraktur:{label:'Fraktur（ゴシック体）', pkg:'unifrakturmaguntia', fam:'UnifrakturMaguntia', w:400},
+    rye:{label:'Rye（ウエスタン）', pkg:'rye', fam:'Rye', w:400}
+  };
+  window.__BACKFONTS = BACKFONTS;
+  const backFontReady = async (k, text) => {
+    const f = BACKFONTS[k]; if (!f || !f.pkg) return;
+    const id = 'bf-' + f.pkg + '-' + f.w;
+    if (!document.getElementById(id)) { const l = document.createElement('link'); l.id = id; l.rel = 'stylesheet'; l.href = `https://cdn.jsdelivr.net/npm/@fontsource/${f.pkg}@5/${f.w}.css`; document.head.appendChild(l); await new Promise(r => { l.onload = r; l.onerror = r; setTimeout(r, 8000); }); }
+    try { await Promise.race([document.fonts.load(`${f.w} 150px "${f.fam}"`, text), new Promise(r => setTimeout(r, 8000))]); } catch (e) {}
+  };
+  // デザインの色から文字の色を決める：入れる場所（左右の端）の明るさで明るい色／濃い色を選び、デザインでいちばん目立つ色みに合わせる
+  function backAutoColor(){
+    const src = designCanvas; if (!src) return { c1:'#fff3c4', c2:'#c8902a', stroke:'#3a2208' };
+    const k = Math.min(1, 160 / src.width), w = Math.max(1, Math.round(src.width*k)), h = Math.max(1, Math.round(src.height*k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(src, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data; let Ls = 0, n = 0; const bins = new Array(12).fill(0);
+    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) {
+      const i = (yy*w+xx)*4, r = d[i]/255, g = d[i+1]/255, b = d[i+2]/255, mx = Math.max(r,g,b), mn = Math.min(r,g,b), L = 0.299*r+0.587*g+0.114*b;
+      if ((xx < w*0.1 || xx > w*0.9) && yy > h*0.25 && yy < h*0.9) { Ls += L; n++; }
+      const sat = mx ? (mx-mn)/mx : 0; if (sat > 0.45 && mx > 0.45) { let hh = mx === r ? ((g-b)/(mx-mn)) % 6 : mx === g ? (b-r)/(mx-mn) + 2 : (r-g)/(mx-mn) + 4; hh = (hh*60+360) % 360; bins[Math.floor(hh/30)] += sat*mx; }
+    }
+    const dark = (n ? Ls/n : 0.3) < 0.55, top = bins.indexOf(Math.max(...bins)), hue = top*30 + 15, any = Math.max(...bins) > w*h*0.02;
+    if (!any) return dark ? { c1:'#fff3c4', c2:'#c8902a', stroke:'#2a1a08' } : { c1:'#3a3a48', c2:'#111118', stroke:'#ffffff' };
+    return dark ? { c1:`hsl(${hue},85%,85%)`, c2:`hsl(${hue},80%,58%)`, stroke:'rgba(10,8,12,.9)' } : { c1:`hsl(${hue},70%,38%)`, c2:`hsl(${hue},80%,20%)`, stroke:'rgba(255,255,255,.95)' };
+  }
+  function backTextCanvas(text, o = {}){
     let lines = String(text).split(/\||\n/).map(s => s.replace(/\s+$/, '')).filter(s => s.trim());
     const jp = /[぀-ヿ㐀-鿿]/.test(text);
-    if (lines.length === 1 && [...lines[0]].length > 8) {
+    let dir = o.dir && o.dir !== 'auto' ? o.dir : (jp ? 'v' : 'r');
+    if (dir !== 'h' && lines.length === 1 && [...lines[0]].length > 8) {
       const ch = [...lines[0]], mid = ch.length / 2; let best = -1;
       ch.forEach((c, i) => { if (/[、。，,！!？?\s　]/.test(c) && i < ch.length - 1 && (best < 0 || Math.abs(i + 1 - mid) < Math.abs(best - mid))) best = i + 1; });
       if (best > 0) lines = [ch.slice(0, best).join('').trim(), ch.slice(best).join('').trim()];
     }
-    const fs = 150, pad = 30, gap = 40, font = `600 ${fs}px "Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","Zen Antique",serif`;
-    const gold = (x, w, h) => { const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0,'#fff3c4'); g.addColorStop(.4,'#f2c95a'); g.addColorStop(.6,'#c8902a'); g.addColorStop(1,'#f7dc8a'); return g; };
-    const ink = (x, s, px, py, g) => { x.lineJoin = 'round'; x.strokeStyle = '#3a2208'; x.lineWidth = 10; x.strokeText(s, px, py); x.fillStyle = g; x.fillText(s, px, py); };
+    const fk = BACKFONTS[o.font] ? o.font : (jp ? 'mincho' : 'playfair'), F = BACKFONTS[fk];
+    const fs = 150, pad = 30, gap = 40, font = `${F.w} ${fs}px ${F.pkg ? '"' + F.fam + '",' : ''}${BACKFONTS.mincho.fam}`;
+    const col = (o.color1 || o.color2) ? { c1:o.color1 || o.color2, c2:o.color2 || o.color1, stroke:o.stroke || '#222' } : Object.assign(backAutoColor(), o.stroke ? { stroke:o.stroke } : {});
+    const grad = (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, col.c1); g.addColorStop(1, col.c2); return g; };
+    const ink = (x, s, px, py, g) => { x.lineJoin = 'round'; x.strokeStyle = col.stroke; x.lineWidth = 10; x.strokeText(s, px, py); x.fillStyle = g; x.fillText(s, px, py); };
     const c = document.createElement('canvas'), m = c.getContext('2d'); m.font = font;
-    if (jp) {
+    if (dir === 'v') {
       const rows = Math.max(...lines.map(l => [...l].length));
       c.width = pad*2 + fs*lines.length + gap*(lines.length-1); c.height = pad*2 + fs*rows;
-      const x = c.getContext('2d'); x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle'; const g = gold(x, c.width, c.height);
+      const x = c.getContext('2d'); x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle'; const g = grad(x, c.width, c.height);
       lines.forEach((l, ci) => {
         const ch = [...l], off = ci === 0 ? 0 : rows - ch.length, cx = c.width - pad - fs/2 - ci*(fs+gap);
         ch.forEach((t, ri) => {
           if (/\s/.test(t)) return; let px = cx, py = pad + fs*(ri+off) + fs/2;
           if (/[、。，．]/.test(t)) { px += fs*0.6; py -= fs*0.6; }
-          if (/[ー〜～—－…‥（）()「」『』［］\[\]【】]/.test(t)) { x.save(); x.translate(px, py); x.rotate(Math.PI/2); ink(x, t, 0, 0, g); x.restore(); }
+          if (/[ー〜～—－…‥（）()「」『』［］\[\]【】a-zA-Z0-9]/.test(t)) { x.save(); x.translate(px, py); x.rotate(Math.PI/2); ink(x, t, 0, 0, g); x.restore(); }
           else ink(x, t, px, py, g);
         });
       });
     } else {
-      const w = Math.ceil(Math.max(...lines.map(l => m.measureText(l).width))), lh = fs*1.15;
-      c.width = pad*2 + Math.round(lh*lines.length); c.height = pad*2 + w;
-      const x = c.getContext('2d'); x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle'; const g = gold(x, c.width, c.height);
-      x.translate(c.width/2, c.height/2); x.rotate(Math.PI/2);
+      if (dir === 'h') {   // 横書き（そのまま）は幅が狭いので、いちばん大きく描ける文字数で折り返す（文字は変えない。句読点は行頭に来ないように前の行へ）
+        const wrap = (l, n) => { if (jp) { const ch = [...l], out = []; let cur = []; ch.forEach(t => { if (cur.length >= n && !/[、。，．！？!?ー）」』]/.test(t)) { out.push(cur.join('')); cur = []; } cur.push(t); }); if (cur.length) out.push(cur.join('')); return out; }
+          const ws = l.split(/\s+/), out = []; let cur = ''; ws.forEach(wd => { const t = cur ? cur + ' ' + wd : wd; if (cur && m.measureText(t).width > n * fs * 0.6) { out.push(cur); cur = wd; } else cur = t; }); if (cur) out.push(cur); return out; };
+        let best = null;
+        for (let n = 2; n <= 12; n++) { const ls = lines.flatMap(l => wrap(l, n)), w = Math.max(...ls.map(l => m.measureText(l).width)) + pad*2, h = ls.length*fs*1.2 + pad*2, k = Math.min(240 / w, 600 / h); if (!best || k > best.k * 1.02) best = { k, ls }; }
+        lines = best.ls;
+      }
+      const w = Math.ceil(Math.max(...lines.map(l => m.measureText(l).width))), lh = fs*1.2, tw = pad*2 + w, th = pad*2 + Math.round(lh*lines.length);
+      const rot = dir === 'r'; c.width = rot ? th : tw; c.height = rot ? tw : th;
+      const x = c.getContext('2d'); x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.translate(c.width/2, c.height/2); if (rot) x.rotate(Math.PI/2);
+      const g = x.createLinearGradient(0, -th/2, 0, th/2); g.addColorStop(0, col.c1); g.addColorStop(1, col.c2);
       lines.forEach((l, i) => ink(x, l, 0, (i - (lines.length-1)/2) * lh, g));
     }
-    return c;
+    return { canvas: c, dir, font: fk, color: col, lines };
   }
-  window.__setBackText = text => {
+  window.__setBackText = async (text, o = {}) => {
     if (!text || !String(text).trim()) { logoImg = null; $('useLogo').checked = false; syncOutputs(); schedule(); return null; }
-    const c = backTextCanvas(text); logoImg = c;
-    const lw = Math.min(240, 600 * logoImg.width / logoImg.height);     // 1440換算の幅
+    const fk = BACKFONTS[o.font] ? o.font : null; if (fk) await backFontReady(fk, String(text));
+    const r = backTextCanvas(text, o), c = r.canvas; logoImg = c;
+    const lw = Math.min(240, 600 * c.width / c.height);     // 1440換算の幅
     $('size').value = (lw / 1440 * 100).toFixed(1); $('pos').value = (585 / 1024 * 100).toFixed(1);
     $('useLogo').checked = true; $('nameLogo').textContent = '裏の文字'; $('thumbLogo').src = c.toDataURL('image/png');
     syncOutputs(); schedule();
-    return { size: +$('size').value, pos: +$('pos').value, w: logoImg.width, h: logoImg.height };
+    return { size: +$('size').value, pos: +$('pos').value, w: c.width, h: c.height, dir: r.dir, font: r.font, color: r.color, lines: r.lines };
   };
-  // 裏の文字なども入ったデザイン画像（デザイン画像.jpg として保存されるもの）
+  // 画面の「裏の文字」
+  (() => {
+    const sel = $('backFont'); if (!sel) return;
+    sel.innerHTML = '<option value="">自動</option>' + Object.entries(BACKFONTS).map(([k, f]) => `<option value="${k}">${f.label}</option>`).join('');
+    $('backApply').addEventListener('click', async () => {
+      const o = { dir: $('backDir').value, font: sel.value };
+      if ($('backColorMode').value === 'pick') { o.color1 = $('backC1').value; o.color2 = $('backC2').value; }
+      const r = await window.__setBackText($('backText').value, o);
+      status(r ? `裏の文字を入れました（${{v:'縦書き',h:'横書き',r:'横書き・90°'}[r.dir]}・${BACKFONTS[r.font].label}）。` : '裏の文字を外しました。');
+    });
+    $('backColorMode').addEventListener('change', () => { $('backColors').hidden = $('backColorMode').value !== 'pick'; });
+  })();
   window.__designJpeg = (q = 0.95) => designCanvas ? designCanvas.toDataURL('image/jpeg', q).split(',')[1] : null;
   function makePdfBlob(){
     const pdf = new window.jspdf.jsPDF({unit:'pt', format:[595.276, 841.89]});

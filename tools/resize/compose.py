@@ -5,14 +5,15 @@
   python3 compose.py DESIGN.jpg --spec '{"tag":"heart","seal":"sl_lx_white"}' [--checks '["decoNeck"]'] [--back '酒を飲むなら、|粋に飲め'] --out DIR [--html ../../index.html]
 
 出力：DIR/submission.jpg、DIR/submission_preview.jpg（長辺1100）、DIR/tag.png（タグがあるとき）、DIR/compose.json
---back（Asanaの「裏：〇〇」の文字。一字も変えない。「|」で改行）があると、提出用の裏（ロゴの位置）に金の文字を入れ、
+--back（Asanaの「裏：〇〇」の文字。一字も変えない。「|」で改行）があると、提出用の裏（ロゴの位置）に文字を入れ、
+--back-opt '{"dir":"v|h|r|auto","font":"<書体キー>","color1":"#..","color2":"#..","stroke":"#.."}'（省略可。色を省くとデザインの色から自動、書体キーは提出用ツールの BACKFONTS）。
 同じ文字が入ったデザイン画像を DIR/design_back.jpg に書く（register.py はこれがあれば design.jpg の代わりに送る）。
 """
 import argparse, asyncio, base64, json, os, sys
 from playwright.async_api import async_playwright
 
 ap = argparse.ArgumentParser()
-ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default=''); ap.add_argument('--out', required=True)
+ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default=''); ap.add_argument('--back-opt', default='{}'); ap.add_argument('--out', required=True)
 ap.add_argument('--html', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'index.html'))
 a = ap.parse_args()
 spec, checks = json.loads(a.spec), json.loads(a.checks)
@@ -23,6 +24,20 @@ async def main():
         b = await p.chromium.launch()
         pg = await b.new_page(viewport={'width': 1400, 'height': 1000})
         errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+        # 裏の文字の書体（@fontsource を jsdelivr から読む）は、手元の npm パッケージから返す（クラウドから jsdelivr に出られないため）
+        async def fonts(route):
+            import re as _re
+            from textlayer import _pkg
+            m = _re.match(r'https://cdn\.jsdelivr\.net/npm/@fontsource/([^@/]+)@[^/]+/(.+)$', route.request.url)
+            try:
+                fp = os.path.join(_pkg(m.group(1)), m.group(2)) if m else ''
+                if fp and os.path.exists(fp):
+                    ct = 'text/css' if fp.endswith('.css') else 'font/woff2' if fp.endswith('.woff2') else 'font/woff'
+                    return await route.fulfill(status=200, body=open(fp, 'rb').read(), headers={'Content-Type': ct, 'Access-Control-Allow-Origin': '*'})
+            except Exception as e:
+                errs.append('font ' + str(e))
+            await route.fulfill(status=404, body='')
+        await pg.route('https://cdn.jsdelivr.net/npm/@fontsource/**', fonts)
         await pg.goto('file://' + os.path.abspath(a.html)); await pg.wait_for_timeout(2500)
         await pg.set_input_files('#fileDesign', a.design); await pg.wait_for_timeout(2500)
         for n, v in spec.items():
@@ -34,7 +49,7 @@ async def main():
             await pg.evaluate("id => { const el = document.getElementById(id); if (el && !el.checked) el.click(); }", i); await pg.wait_for_timeout(300)
         back = None
         if a.back.strip():
-            back = await pg.evaluate("t => window.__setBackText(t)", a.back.strip()); await pg.wait_for_timeout(2500)
+            back = await pg.evaluate("([t, o]) => window.__setBackText(t, o)", [a.back.strip(), json.loads(a.back_opt or '{}')]); await pg.wait_for_timeout(2500)
         await pg.wait_for_timeout(2000)
         if 'サンプル表示中' in await pg.inner_text('#badge'):
             sys.exit('デザインが反映されませんでした')

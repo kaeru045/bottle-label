@@ -50,8 +50,13 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 - できあがったカードの「👤 人物を大きく」「👤 人物を小さく」で、ひと回り（約15%）大きく／小さくする修正依頼が入る。
 
 ## 裏の文字（Asanaの「裏：〇〇」）
-- 裏の文字はデザインの表には入れず、提出用フォーマットの「ロゴを裏に入れる」の位置に金の文字で入れる（`compose.py --back '<文字>'`、`textopts.py --back`、`register.py --back`）。
-- 文字は一字も変えない。「|」で改行。無ければ9文字以上のとき「、」などの後ろで2行に。日本語は縦書き（2行目以降は下揃え）、英数字だけなら横書きを90°回す。
-- 大きさは自動でフォーマット内（1440換算で幅の半分≦約120px＝左右の帯134pxの内側、高さ≦600px・中心585px＝上下の帯にかからない）。
-- compose.py は裏の文字入りのデザイン画像を `design_back.jpg` に書き、register.py はそれがあればデザイン画像として送る。
-- 提出用ツール側の関数：`window.__setBackText(text)`（入れる／空で外す）、`window.__designJpeg()`（文字入りのデザイン画像）。
+- 裏の文字はデザインの表には入れず、提出用フォーマットの「ロゴを裏に入れる」の位置に入れる（`compose.py --back '<文字>' [--back-opt '<JSON>']`、`textopts.py`・`register.py` も同じ引数）。
+- 文字は一字も変えない。「|」で改行。
+- `--back-opt`：`{"dir":"auto|v|h|r","font":"<書体キー>","color1":"#..","color2":"#..","stroke":"#.."}`。どれも省略できる。
+  - dir：v＝縦書き（2行目以降は下揃え）、h＝横書き（いちばん大きく描ける文字数で自動で折り返す）、r＝横書きを90°回す、auto＝日本語は縦書き・英数字は90°。依頼に「横書き」とあれば h。
+  - font：提出用ツールの `BACKFONTS`（mincho 明朝／gothic ゴシック／zenantique 和モダン／yuji 筆／dela 極太／zenmaru 丸ゴシック／mochiy ポップ／hachimaru 手書き風／playfair 上品／vibes・dancing 筆記体／cinzel 大文字だけ／lobster／pacifico／caveat 手書き／pirata 海賊／fraktur ゴシック体／rye ウエスタン）。デザインの雰囲気に合うものを選ぶ。省くと日本語は明朝、英字は playfair。
+  - 色：省くとデザインの色から自動（入れる場所が暗ければ明るい色、明るければ濃い色。色みはデザインでいちばん目立つ色）。指定するときは color1（上）・color2（下）・stroke（縁）。
+- 大きさは自動でフォーマット内（1440換算で幅≦240px＝左右の帯134pxの内側、高さ≦600px・中心585px＝上下の帯にかからない）。
+- compose.py は裏の文字入りのデザイン画像を `design_back.jpg` に書き、register.py はそれがあればデザイン画像として送る（仕様に back・backOpt が残る）。
+- 書体は jsdelivr の @fontsource から読む。compose.py はそのリクエストを手元の npm パッケージ（fonts/pkg）で返す。
+- 提出用ツール側：`await window.__setBackText(text, opt)`（入れる／空で外す）、`window.__designJpeg()`（文字入りのデザイン画像）。画面のステップ2「裏の文字」からも入れられる。

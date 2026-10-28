@@ -50,7 +50,7 @@ window.registerToSite = async function (o) {
     await wait(2500);
     for (const [n, v] of Object.entries(o.spec || {})) { const r = d.querySelector(`input[name=${n}][value="${v}"]`); if (!r) throw new Error('仕様なし ' + n + '=' + v); r.click(); await wait(500); }
     for (const id of (o.checks || [])) { const el = d.getElementById(id); if (el && !el.checked) el.click(); await wait(300); }
-    if (o.back) { if (!w.__setBackText) throw new Error('提出用ツールが古い（裏の文字なし）'); w.__setBackText(o.back); await wait(2500); }
+    if (o.back) { if (!w.__setBackText) throw new Error('提出用ツールが古い（裏の文字なし）'); await w.__setBackText(o.back, o.backOpt || {}); await wait(2500); }
     await wait(2000);
     if (/サンプル表示中/.test(d.body.innerText)) throw new Error('デザイン未反映');
     const submission = await new Promise(r => d.getElementById('out').toBlob(r, 'image/jpeg', 0.92));
@@ -58,7 +58,7 @@ window.registerToSite = async function (o) {
     const tc = w.__buildTagCanvas && w.__buildTagCanvas(), tk = (d.querySelector('input[name=tag]:checked') || {}).value;
     const tagBlob = tc ? await new Promise(r => tc.toBlob(r, 'image/png')) : null;
     const body = JSON.stringify({ key: o.key, order: o.order, shop: o.shop, name: o.name, template: o.template, due: o.due, asana: o.asana, decolino: o.decolino, memo: o.memo || '',
-      asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', back: o.back || '' },
+      asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', back: o.back || '', backOpt: o.backOpt || {} },
       design: { name: o.fileBase + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
       designPreview: { name: o.fileBase + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
       tpl: await (async () => { try { const s = o.decolino && o.template && await tplFor(o.decolino, o.template); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
@@ -67,6 +67,9 @@ window.registerToSite = async function (o) {
     const t = await res.text(); try { return JSON.parse(t); } catch (e) { return { ok: false, status: res.status, body: t.slice(0, 200) }; }
   } finally { fr.remove(); }
 };
+// 裏の文字：仕様の back／backOpt。仕様に無い古い案件は window.__backFor = {'<id>': '文字' または {text:'文字', dir, font, color1, color2}} で渡す
+window.backOf = (sp, id) => { const f = (window.__backFor || {})[id]; const fo = f && typeof f === 'object' ? f : null;
+  return { back: (sp && sp.back) || (fo ? fo.text : f) || '', backOpt: (sp && sp.backOpt) || (fo ? Object.fromEntries(Object.entries(fo).filter(([k]) => k !== 'text')) : {}) }; };
 window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
   const src = await siteApi({ action: 'sources' }); if (!src.ok) return src;
   const res = []; let done = 0;
@@ -80,7 +83,7 @@ window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
     if (!sp) { res.push(tag + '：仕様が未登録のためスキップ'); continue; }
     if (dry || done >= max) { res.push(tag + '：更新あり（未反映）'); continue; }
     const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + c.asset, asset: c.asset, order: it.order, name: it.name,
-      shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', back: sp.back || (window.__backFor || {})[it.id] || '', confirmed: c.asset, note: 'Decolinoで確定した修正版',
+      shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', ...backOf(sp, it.id), confirmed: c.asset, note: 'Decolinoで確定した修正版',
       fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
     res.push(tag + '：' + (r.ok ? 'v' + r.version + ' に更新' : '失敗 ' + (r.error || r.status))); done++;
   }
@@ -116,7 +119,7 @@ window.finishFix = async id => {
   if (!sp) { await siteApi({ action: 'fixState', id, state: 'エラー:仕様が未登録です' }); return '仕様なし'; }
   const cf = await confirmedAsset(it.decolino);
   const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + asset, asset, order: it.order, name: it.name,
-    shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', back: sp.back || (window.__backFor || {})[id] || '', confirmed: (cf && cf.asset) || 'none', fixDone: true,
+    shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', ...backOf(sp, id), confirmed: (cf && cf.asset) || 'none', fixDone: true,
     note: '修正指示「' + it.fix + '」で作り直し（Decolinoは未確定）',
     fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
   if (!r.ok) await siteApi({ action: 'fixState', id, state: 'エラー:' + (r.error || r.status) });

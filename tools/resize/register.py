@@ -13,6 +13,7 @@ ap = argparse.ArgumentParser()
 for k in ['cand', 'dir', 'order', 'shop', 'name', 'due', 'asana']: ap.add_argument('--' + k, default='')
 ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--file-base', default='')
 ap.add_argument('--back', default='', help='裏の文字（compose.py --back と同じ）。仕様に残して、修正の作り直しでも入れる')
+ap.add_argument('--back-opt', default='{}', help='裏の文字の向き・書体・色（compose.py --back-opt と同じ）')
 ap.add_argument('--fix', default='', help='修正依頼で作り直したときの修正内容（修正指示を消して「修正済み」にする）')
 ap.add_argument('--memo', default='Asanaのリサイズ依頼から自動作成（Adobe生成拡張で背景を広げ、元の画像は描き直していません）')
 a = ap.parse_args()
@@ -27,7 +28,7 @@ info = json.load(open(os.path.join(d, 'compose.json'))) if os.path.exists(os.pat
 tagp = os.path.join(d, 'tag.png')
 spec, checks = json.loads(a.spec), json.loads(a.checks)
 body = {'order': a.order, 'shop': a.shop, 'name': a.name, 'template': 'リサイズ', 'due': a.due, 'asana': a.asana, 'decolino': '', 'memo': a.memo,
-        'asset': '', 'note': ('修正指示「' + a.fix + '」でリサイズを作り直し') if a.fix else 'リサイズで作り直し', 'fixDone': bool(a.fix), 'spec': {'spec': spec, 'checks': checks, 'shop': a.shop, 'template': 'リサイズ', 'confirmed': '', 'logo': '', 'back': a.back},
+        'asset': '', 'note': ('修正指示「' + a.fix + '」でリサイズを作り直し') if a.fix else 'リサイズで作り直し', 'fixDone': bool(a.fix), 'spec': {'spec': spec, 'checks': checks, 'shop': a.shop, 'template': 'リサイズ', 'confirmed': '', 'logo': '', 'back': a.back, 'backOpt': json.loads(a.back_opt or '{}')},
         'design': b64file(dj, base + 'デザイン画像.jpg'),
         'submission': b64file(os.path.join(d, 'submission.jpg'), base + '提出用.jpg'),
         'designPreview': b64file(dp, base + 'デザイン_プレビュー.jpg'),

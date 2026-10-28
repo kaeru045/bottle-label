@@ -23,7 +23,7 @@ ap.add_argument('dir'); ap.add_argument('--cand', default=''); ap.add_argument('
 ap.add_argument('--styles', default='script,pop,gold'); ap.add_argument('--rotate', default='-3,-4,-3')
 ap.add_argument('--no-send', action='store_true')
 ap.add_argument('--spec', default=None, help='提出用の仕様（{"tag":..,"seal":..,"ribbon":..}）。あれば3案とも提出用まで作る')
-ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default='', help='裏の文字（compose.py --back へ渡す）')
+ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default='', help='裏の文字（compose.py --back へ渡す）'); ap.add_argument('--back-opt', default='{}', help='裏の文字の向き・書体・色（compose.py --back-opt）')
 a = ap.parse_args()
 styles = [s.strip() for s in a.styles.split(',') if s.strip()][:3]
 rots = [float(v) for v in a.rotate.split(',')] + [-3] * 3
@@ -50,7 +50,7 @@ for i, st in enumerate(styles):
     op = {'style': nm, 'design': b64file(out, f'文字案{i + 1}_{nm}デザイン画像.jpg'), 'preview': b64file(pv, f'文字案{i + 1}_{nm}_小.jpg')}
     if a.spec is not None:  # 提出用フォーマットまで作る
         od = os.path.join(a.dir, f'opt{i + 1}')
-        c = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'compose.py'), out, '--spec', a.spec, '--checks', a.checks, '--back', a.back, '--out', od], capture_output=True, text=True)
+        c = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'compose.py'), out, '--spec', a.spec, '--checks', a.checks, '--back', a.back, '--back-opt', a.back_opt, '--out', od], capture_output=True, text=True)
         if c.returncode != 0: sys.exit('提出用が作れません：' + c.stderr[-500:])
         info = json.load(open(os.path.join(od, 'compose.json'))) if os.path.exists(os.path.join(od, 'compose.json')) else {}
         if os.path.exists(os.path.join(od, 'design_back.jpg')): op['design'] = b64file(os.path.join(od, 'design_back.jpg'), f'文字案{i + 1}_{nm}デザイン画像.jpg')
