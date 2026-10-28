@@ -13,3 +13,10 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 
 フォーマット：仕上がり 1440×1024px。上の帯 0〜254px・下の帯 917〜1024px に顔や重要なデザインを入れない。左右 0〜134px・1306〜1440px は背面（背景のみ）。
 管理サイトの URL と登録用キーは環境変数 `ORISHAN_URL`・`ORISHAN_KEY` で渡す（ここには書かない）。
+
+## 修正依頼（管理サイトの「🔧 修正を依頼」）
+リサイズの案件（テンプレ＝リサイズ）の修正依頼は Decolino 側には出ず、`candidates.py fixes` でだけ取れる。
+1. `candidates.py fixstate <一覧のID> "生成中|<今のミリ秒>|"` → `candidates.py fixsrc <一覧のID> DIR/src.jpg`（その案件を作った元画像）
+2. 修正内容に合わせて `place.py`（`--pos` `--zoom` `--dx` `--dy`）→ 生成拡張（3回に分けて）→ `finish.py` → `compose.py`（仕様の変更があれば spec を変える）
+3. `register.py ... --fix "<修正内容>"`（同じ注文・名前で登録 → 版が上がり、修正前は履歴に残り、修正指示が消えて「修正済み」になる）
+4. 失敗したら `candidates.py fixstate <一覧のID> "エラー:<理由>"`

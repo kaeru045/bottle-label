@@ -56,6 +56,18 @@ elif cmd == 'fill':  # 手動の依頼（AsanaのURLだけ）に、Asanaの添�
     if len(sys.argv) > 5 and sys.argv[5]: body['spec'] = json.loads(sys.argv[5])
     if len(sys.argv) > 6 and sys.argv[6]: body.update(json.loads(sys.argv[6]))
     print(json.dumps(api(body), ensure_ascii=False))
+elif cmd == 'fixes':  # リサイズ案件の修正依頼（管理サイトの「🔧 修正を依頼」）
+    print(json.dumps(api({'action': 'fixes', 'resize': True}), ensure_ascii=False))
+elif cmd == 'fixsrc':  # python3 candidates.py fixsrc 一覧のID OUTPATH … その案件を作った元画像と候補の情報
+    c = api({'action': 'resizeFindByResult', 'result': sys.argv[2]})
+    if not c.get('ok'): sys.exit(json.dumps(c, ensure_ascii=False))
+    r = api({'action': 'resizeSrc', 'id': c['item']['ID']})
+    if not r.get('ok'): sys.exit(json.dumps(r, ensure_ascii=False))
+    import base64
+    open(sys.argv[3], 'wb').write(base64.b64decode(r['data']))
+    print(json.dumps({'cand': c['item']['ID'], 'src': sys.argv[3], '説明': c['item'].get('説明', '')}, ensure_ascii=False))
+elif cmd == 'fixstate':  # python3 candidates.py fixstate 一覧のID 状態（生成中|… / エラー:理由）
+    print(json.dumps(api({'action': 'fixState', 'id': sys.argv[2], 'state': sys.argv[3]}), ensure_ascii=False))
 elif cmd == 'queue':
     print(json.dumps(api({'action': 'resizeQueue'}), ensure_ascii=False))
 elif cmd == 'src':

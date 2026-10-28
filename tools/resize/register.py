@@ -12,6 +12,7 @@ from common import api, b64file
 ap = argparse.ArgumentParser()
 for k in ['cand', 'dir', 'order', 'shop', 'name', 'due', 'asana']: ap.add_argument('--' + k, default='')
 ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--file-base', default='')
+ap.add_argument('--fix', default='', help='修正依頼で作り直したときの修正内容（修正指示を消して「修正済み」にする）')
 ap.add_argument('--memo', default='Asanaのリサイズ依頼から自動作成（Adobe生成拡張で背景を広げ、元の画像は描き直していません）')
 a = ap.parse_args()
 d = a.dir
@@ -24,7 +25,7 @@ info = json.load(open(os.path.join(d, 'compose.json'))) if os.path.exists(os.pat
 tagp = os.path.join(d, 'tag.png')
 spec, checks = json.loads(a.spec), json.loads(a.checks)
 body = {'order': a.order, 'shop': a.shop, 'name': a.name, 'template': 'リサイズ', 'due': a.due, 'asana': a.asana, 'decolino': '', 'memo': a.memo,
-        'asset': '', 'note': 'リサイズで作り直し', 'spec': {'spec': spec, 'checks': checks, 'shop': a.shop, 'template': 'リサイズ', 'confirmed': '', 'logo': ''},
+        'asset': '', 'note': ('修正指示「' + a.fix + '」でリサイズを作り直し') if a.fix else 'リサイズで作り直し', 'fixDone': bool(a.fix), 'spec': {'spec': spec, 'checks': checks, 'shop': a.shop, 'template': 'リサイズ', 'confirmed': '', 'logo': ''},
         'design': b64file(os.path.join(d, 'design.jpg'), base + 'デザイン画像.jpg'),
         'submission': b64file(os.path.join(d, 'submission.jpg'), base + '提出用.jpg'),
         'designPreview': b64file(dp, base + 'デザイン_プレビュー.jpg'),
@@ -35,5 +36,5 @@ print(json.dumps({k: v for k, v in r.items() if k != 'data'}, ensure_ascii=False
 if not r.get('ok'):
     if a.cand: api({'action': 'resizeState', 'id': a.cand, 'state': 'エラー', 'error': '管理サイトに登録できませんでした：' + str(r.get('error') or r.get('status'))})
     sys.exit(1)
-if a.cand:
+if a.cand and not a.fix:
     print(json.dumps(api({'action': 'resizeState', 'id': a.cand, 'state': '作成済み', 'result': r.get('id', '')}), ensure_ascii=False))

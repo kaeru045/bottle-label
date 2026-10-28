@@ -15,6 +15,8 @@ from common import W, H, SAFE, K
 ap = argparse.ArgumentParser()
 ap.add_argument('src'); ap.add_argument('--box', required=True); ap.add_argument('--kind', choices=['head', 'content'], required=True)
 ap.add_argument('--pos', choices=['center', 'left', 'right'], default='center'); ap.add_argument('--out', required=True)
+ap.add_argument('--zoom', type=float, default=1.0, help='大きさの調整（1.15＝15%大きく）。修正依頼「人物をもっと大きく」など')
+ap.add_argument('--dx', type=float, default=0, help='左右に動かす量（仕上がりのpx、＋で右）'); ap.add_argument('--dy', type=float, default=0, help='上下に動かす量（仕上がりのpx、＋で下）')
 a = ap.parse_args()
 
 im = cv2.imread(a.src, cv2.IMREAD_COLOR)
@@ -39,6 +41,11 @@ else:
     y = (SAFE['y0'] + SAFE['y1']) / 2 - (y0 + bh / 2) * s
     cx = {'center': W / 2, 'left': SAFE['x0'] + sw * m + bw * s / 2, 'right': SAFE['x1'] - sw * m - bw * s / 2}[a.pos]
 x = cx - (x0 + bw / 2) * s
+if a.zoom != 1.0:  # 大事な範囲の中心を軸に拡大・縮小
+    ccx, ccy = x + (x0 + bw / 2) * s, y + (y0 + bh / 2) * s
+    s *= a.zoom
+    x, y = ccx - (x0 + bw / 2) * s, ccy - (y0 + bh / 2) * s
+x += a.dx * K; y += a.dy * K
 
 # 画像のうちキャンバスに入る部分（キャンバス座標）
 dx0, dy0 = max(0, round(x)), max(0, round(y))
