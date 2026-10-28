@@ -2,15 +2,17 @@
 """提出用フォーマット（このリポジトリの index.html）をヘッドレスブラウザで動かし、提出用 JPG・プレビュー・タグ画像を作る。
 管理サイトの自動登録（registerToSite）と同じ手順：デザイン画像を入れる → 仕様のラジオを押す → チェックを入れる → 書き出す。
 
-  python3 compose.py DESIGN.jpg --spec '{"tag":"heart","seal":"sl_lx_white"}' [--checks '["decoNeck"]'] --out DIR [--html ../../index.html]
+  python3 compose.py DESIGN.jpg --spec '{"tag":"heart","seal":"sl_lx_white"}' [--checks '["decoNeck"]'] [--back '酒を飲むなら、|粋に飲め'] --out DIR [--html ../../index.html]
 
 出力：DIR/submission.jpg、DIR/submission_preview.jpg（長辺1100）、DIR/tag.png（タグがあるとき）、DIR/compose.json
+--back（Asanaの「裏：〇〇」の文字。一字も変えない。「|」で改行）があると、提出用の裏（ロゴの位置）に金の文字を入れ、
+同じ文字が入ったデザイン画像を DIR/design_back.jpg に書く（register.py はこれがあれば design.jpg の代わりに送る）。
 """
 import argparse, asyncio, base64, json, os, sys
 from playwright.async_api import async_playwright
 
 ap = argparse.ArgumentParser()
-ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--out', required=True)
+ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default=''); ap.add_argument('--out', required=True)
 ap.add_argument('--html', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'index.html'))
 a = ap.parse_args()
 spec, checks = json.loads(a.spec), json.loads(a.checks)
@@ -30,6 +32,9 @@ async def main():
             await loc.first.evaluate('el => el.click()'); await pg.wait_for_timeout(500)
         for i in checks:
             await pg.evaluate("id => { const el = document.getElementById(id); if (el && !el.checked) el.click(); }", i); await pg.wait_for_timeout(300)
+        back = None
+        if a.back.strip():
+            back = await pg.evaluate("t => window.__setBackText(t)", a.back.strip()); await pg.wait_for_timeout(2500)
         await pg.wait_for_timeout(2000)
         if 'サンプル表示中' in await pg.inner_text('#badge'):
             sys.exit('デザインが反映されませんでした')
@@ -40,12 +45,16 @@ async def main():
           const url = (c, t, q) => c.toDataURL(t, q).split(',')[1];
           const tc = window.__buildTagCanvas && window.__buildTagCanvas(), tk = (document.querySelector('input[name=tag]:checked') || {}).value;
           return { submission: url(out, 'image/jpeg', 0.92), subPrev: url(shrink(out, 1100), 'image/jpeg', 0.82),
-            tag: tc ? url(tc, 'image/png') : null, tagName: tc ? ((window.__TAGNAME || {})[tk] || tk) : null };
+            tag: tc ? url(tc, 'image/png') : null, tagName: tc ? ((window.__TAGNAME || {})[tk] || tk) : null,
+            design: document.getElementById('useLogo').checked && window.__designJpeg ? window.__designJpeg(0.95) : null };
         }""")
-        for k, fn in [('submission', 'submission.jpg'), ('subPrev', 'submission_preview.jpg'), ('tag', 'tag.png')]:
+        bp = os.path.join(a.out, 'design_back.jpg')
+        if os.path.exists(bp): os.remove(bp)
+        if not back: res['design'] = None
+        for k, fn in [('submission', 'submission.jpg'), ('subPrev', 'submission_preview.jpg'), ('tag', 'tag.png'), ('design', 'design_back.jpg')]:
             if res.get(k):
                 open(os.path.join(a.out, fn), 'wb').write(base64.b64decode(res[k]))
-        info = {'tagName': res.get('tagName'), 'errors': errs}
+        info = {'tagName': res.get('tagName'), 'back': back, 'errors': errs}
         json.dump(info, open(os.path.join(a.out, 'compose.json'), 'w'), ensure_ascii=False)
         print(json.dumps(info, ensure_ascii=False))
         await b.close()

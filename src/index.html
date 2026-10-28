@@ -204,7 +204,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/28 12:20</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/29 02:50</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -1266,6 +1266,55 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     return o;
   }
   window.__buildTagCanvas = buildTagCanvas; window.__TAGNAME = TAGNAME; // 管理サイトへの登録・保存でタグ画像も送る
+
+  // 裏の文字（Asanaの「裏：〇〇」）：文字を金の透過PNGにして「ロゴを裏に入れる」の位置に入れる。
+  // 文字は一字も変えない。行は「|」か改行で区切る（無ければ長いときだけ「、」などの後ろで2行に）。日本語は縦書き（2行目以降は下揃え）、英数字だけなら横書きを90°回す。
+  // 大きさはフォーマット内に収める（1440×1024換算：幅の半分≦約120px＝左右134pxの帯の内側、高さ≦600px・中心585px＝上下の帯にかからない）。
+  function backTextCanvas(text){
+    let lines = String(text).split(/\||\n/).map(s => s.replace(/\s+$/, '')).filter(s => s.trim());
+    const jp = /[぀-ヿ㐀-鿿]/.test(text);
+    if (lines.length === 1 && [...lines[0]].length > 8) {
+      const ch = [...lines[0]], mid = ch.length / 2; let best = -1;
+      ch.forEach((c, i) => { if (/[、。，,！!？?\s　]/.test(c) && i < ch.length - 1 && (best < 0 || Math.abs(i + 1 - mid) < Math.abs(best - mid))) best = i + 1; });
+      if (best > 0) lines = [ch.slice(0, best).join('').trim(), ch.slice(best).join('').trim()];
+    }
+    const fs = 150, pad = 30, gap = 40, font = `600 ${fs}px "Hiragino Mincho ProN","Yu Mincho","Noto Serif JP","Zen Antique",serif`;
+    const gold = (x, w, h) => { const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0,'#fff3c4'); g.addColorStop(.4,'#f2c95a'); g.addColorStop(.6,'#c8902a'); g.addColorStop(1,'#f7dc8a'); return g; };
+    const ink = (x, s, px, py, g) => { x.lineJoin = 'round'; x.strokeStyle = '#3a2208'; x.lineWidth = 10; x.strokeText(s, px, py); x.fillStyle = g; x.fillText(s, px, py); };
+    const c = document.createElement('canvas'), m = c.getContext('2d'); m.font = font;
+    if (jp) {
+      const rows = Math.max(...lines.map(l => [...l].length));
+      c.width = pad*2 + fs*lines.length + gap*(lines.length-1); c.height = pad*2 + fs*rows;
+      const x = c.getContext('2d'); x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle'; const g = gold(x, c.width, c.height);
+      lines.forEach((l, ci) => {
+        const ch = [...l], off = ci === 0 ? 0 : rows - ch.length, cx = c.width - pad - fs/2 - ci*(fs+gap);
+        ch.forEach((t, ri) => {
+          if (/\s/.test(t)) return; let px = cx, py = pad + fs*(ri+off) + fs/2;
+          if (/[、。，．]/.test(t)) { px += fs*0.6; py -= fs*0.6; }
+          if (/[ー〜～—－…‥（）()「」『』［］\[\]【】]/.test(t)) { x.save(); x.translate(px, py); x.rotate(Math.PI/2); ink(x, t, 0, 0, g); x.restore(); }
+          else ink(x, t, px, py, g);
+        });
+      });
+    } else {
+      const w = Math.ceil(Math.max(...lines.map(l => m.measureText(l).width))), lh = fs*1.15;
+      c.width = pad*2 + Math.round(lh*lines.length); c.height = pad*2 + w;
+      const x = c.getContext('2d'); x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle'; const g = gold(x, c.width, c.height);
+      x.translate(c.width/2, c.height/2); x.rotate(Math.PI/2);
+      lines.forEach((l, i) => ink(x, l, 0, (i - (lines.length-1)/2) * lh, g));
+    }
+    return c;
+  }
+  window.__setBackText = text => {
+    if (!text || !String(text).trim()) { logoImg = null; $('useLogo').checked = false; syncOutputs(); schedule(); return null; }
+    const c = backTextCanvas(text); logoImg = c;
+    const lw = Math.min(240, 600 * logoImg.width / logoImg.height);     // 1440換算の幅
+    $('size').value = (lw / 1440 * 100).toFixed(1); $('pos').value = (585 / 1024 * 100).toFixed(1);
+    $('useLogo').checked = true; $('nameLogo').textContent = '裏の文字'; $('thumbLogo').src = c.toDataURL('image/png');
+    syncOutputs(); schedule();
+    return { size: +$('size').value, pos: +$('pos').value, w: logoImg.width, h: logoImg.height };
+  };
+  // 裏の文字なども入ったデザイン画像（デザイン画像.jpg として保存されるもの）
+  window.__designJpeg = (q = 0.95) => designCanvas ? designCanvas.toDataURL('image/jpeg', q).split(',')[1] : null;
   function makePdfBlob(){
     const pdf = new window.jspdf.jsPDF({unit:'pt', format:[595.276, 841.89]});
     pdf.addImage(out.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 595.276, 841.89);
