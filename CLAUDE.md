@@ -35,3 +35,4 @@
 - 横長リサイズの自動背景拡張：`worker/firefly-proxy.js`（Cloudflare Worker）が Firefly API（IMS client_credentials → `/v2/storage/image` → `/v3/images/expand-async`、`placement.inset` で位置指定 → statusUrl をポーリング）を呼ぶ。シークレット `FIREFLY_CLIENT_ID`／`FIREFLY_CLIENT_SECRET`／`TOOL_PASS`。無料プランの外部通信50回/リクエストに収めるため、ポーリングは2秒×最大40回。ツール側の URL・合言葉は localStorage（`wideApi`／`widePass`）。Artifact 版は外部 fetch 不可なので自動は GitHub Pages 版のみ。
 - 裏の文字（Asanaの「裏：〇〇」）は `await window.__setBackText(text, {dir, font, color1, color2, stroke})` でロゴ位置に入れる（向きは縦書き v／横書き h／90° r／auto、書体は `BACKFONTS`＝jsdelivr の @fontsource、色は省くとデザインから自動）。大きさは自動でフォーマット内（幅≦240px・高さ≦600px・中心585px、1440×1024換算）。`window.__designJpeg()` で文字入りのデザイン画像。画面はステップ2「裏の文字」。2026-10-29 ユーザー指定（色・書体はデザインに合わせる、縦書きに限らない）。
 - 公開ページにお客様のロゴ等のサンプルを入れない。
+- ネックシールの「自動」（`sl_lx_auto`、既定）：デザイン全体の平均の明るさが0.5以上ならホワイト、未満ならブラック（`sealAuto()`／`window.__sealAuto()`）。依頼に色の指定が無い・おまかせのときは自動処理もこれを使う。2026-11-01 ユーザー指定（薄い色のデザインは白、濃い色のデザインは黒）。

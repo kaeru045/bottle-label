@@ -60,3 +60,6 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 - compose.py は裏の文字入りのデザイン画像を `design_back.jpg` に書き、register.py はそれがあればデザイン画像として送る（仕様に back・backOpt が残る）。
 - 書体は jsdelivr の @fontsource から読む。compose.py はそのリクエストを手元の npm パッケージ（fonts/pkg）で返す。
 - 提出用ツール側：`await window.__setBackText(text, opt)`（入れる／空で外す）、`window.__designJpeg()`（文字入りのデザイン画像）。画面のステップ2「裏の文字」からも入れられる。
+
+## ネックシールの色（自動）
+- 仕様の seal を `sl_lx_auto` にすると、デザインの明るさで自動で決まる（薄い色→ホワイト、濃い色→ブラック）。依頼に色の指定が無い・おまかせのときはこれにする。白・黒・金・銀の指定があればそのまま。

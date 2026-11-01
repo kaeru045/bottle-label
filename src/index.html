@@ -206,7 +206,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 10/29 03:20</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 11/01 13:20</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -292,7 +292,8 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
         </div>
         <h3>ネックシール（Luxury）</h3>
         <div class="swatches" role="radiogroup" aria-label="ネックシール">
-          <label class="sw"><input type="radio" name="seal" value="sl_lx_black" checked><span class="chip" style="background:#1b1b1d"></span>ブラック</label>
+          <label class="sw"><input type="radio" name="seal" value="sl_lx_auto" checked><span class="chip" style="background:linear-gradient(90deg,#ffffff 50%,#1b1b1d 50%)"></span>自動<small id="sealAutoNote"></small></label>
+          <label class="sw"><input type="radio" name="seal" value="sl_lx_black"><span class="chip" style="background:#1b1b1d"></span>ブラック</label>
           <label class="sw"><input type="radio" name="seal" value="sl_lx_white"><span class="chip" style="background:#ffffff"></span>ホワイト</label>
           <label class="sw"><input type="radio" name="seal" value="sl_lx_gold"><span class="chip" style="background:linear-gradient(135deg,#b88a2a,#f2d77a,#b88a2a)"></span>ゴールド</label>
           <label class="sw"><input type="radio" name="seal" value="sl_lx_silver"><span class="chip" style="background:linear-gradient(135deg,#9aa0a8,#eef0f2,#9aa0a8)"></span>シルバー</label>
@@ -888,7 +889,8 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     if (tagK === 'none') layers.push('nashi');
     if (tagK === 'tagbody') layers.push(document.querySelector('input[name=tseal]:checked').value);
     layers.push(document.querySelector('input[name=neck]:checked').value);
-    const sealK = document.querySelector('input[name=seal]:checked').value;
+    let sealK = document.querySelector('input[name=seal]:checked').value;
+    if (sealK === 'sl_lx_auto') { sealK = sealAuto(); const nt = $('sealAutoNote'); if (nt) nt.textContent = sealK === 'sl_lx_white' ? '（→ホワイト）' : '（→ブラック）'; }
     if (sealK === 'sl_orig') layers.push('sl_back_white', 'orig'); else layers.push(sealK);
     if ($('decoNeck').checked) layers.push('deco_neck');
     if ($('decoChira').checked) layers.push('deco_chira');
@@ -1308,6 +1310,20 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     try { await Promise.race([document.fonts.load(`${f.w} 150px "${f.fam}"`, text), new Promise(r => setTimeout(r, 8000))]); } catch (e) {}
   };
   // デザインの色から文字の色を決める：入れる場所（左右の端）の明るさで明るい色／濃い色を選び、デザインでいちばん目立つ色みに合わせる
+  // ネックシール自動：デザイン全体の明るさで、薄い色→ホワイト、濃い色→ブラック（2026-11-01 ユーザー指定）
+  let sealAutoSrc = null, sealAutoVal = 'sl_lx_black';
+  function sealAuto(){
+    const src = designImg || designCanvas; if (!src) return 'sl_lx_black';
+    if (src === sealAutoSrc) return sealAutoVal;
+    const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height, k = Math.min(1, 120 / sw);
+    const w = Math.max(1, Math.round(sw*k)), h = Math.max(1, Math.round(sh*k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d', {willReadFrequently:true}); x.drawImage(src, 0, 0, w, h);
+    const d = x.getImageData(0, 0, w, h).data; let L = 0;
+    for (let i = 0; i < d.length; i += 4) L += (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255;
+    sealAutoSrc = src; sealAutoVal = L / (w*h) >= 0.5 ? 'sl_lx_white' : 'sl_lx_black';
+    return sealAutoVal;
+  }
+  window.__sealAuto = () => sealAuto();
   function backAutoColor(){
     const src = designCanvas; if (!src) return { c1:'#fff3c4', c2:'#c8902a', stroke:'#3a2208' };
     const k = Math.min(1, 160 / src.width), w = Math.max(1, Math.round(src.width*k)), h = Math.max(1, Math.round(src.height*k));
