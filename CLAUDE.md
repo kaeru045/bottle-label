@@ -37,3 +37,4 @@
 - 公開ページにお客様のロゴ等のサンプルを入れない。
 - ネックシールの「自動」（`sl_lx_auto`、既定）：デザイン全体の平均の明るさが0.5以上ならホワイト、未満ならブラック（`sealAuto()`／`window.__sealAuto()`）。依頼に色の指定が無い・おまかせのときは自動処理もこれを使う。2026-11-01 ユーザー指定（薄い色のデザインは白、濃い色のデザインは黒）。
 - 裏の文字の効果（backOpt.effect：shadow／glow／emboss／3d、「+」で重ねる）と高級感の書体（shippori・oldmincho・kaisei・cormorant・bodoni・cinzelr・allura・parisienne・italiana・marcellus）を追加。2026-11-02 ユーザー指定（高級感のある文字・シャドーなどの効果）。
+- LINE グループ連携（試作・未デプロイ）：`worker/line-bot.js`（Cloudflare Worker＋KV `LINE`）。`/notify` で修正版（デザイン＋提出用）をグループに送り、送ったメッセージへのリプライを `setFix` で修正依頼として登録（reply は無料、push はグループ人数分の通数）。check.js は `window.__LINE = {url, pass}` があるときだけ registerToSite のあとに送る。2026-11-02 ユーザー指定「試作を作りたい」。

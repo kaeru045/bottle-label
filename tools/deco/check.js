@@ -64,8 +64,21 @@ window.registerToSite = async function (o) {
       tpl: await (async () => { try { const s = o.decolino && o.template && await tplFor(o.decolino, o.template); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
       tag: tagBlob ? { name: o.fileBase + 'タグ_' + ((w.__TAGNAME || {})[tk] || tk) + '.png', data: await b64(tagBlob) } : null });
     const res = await fetch(o.webappUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
-    const t = await res.text(); try { return JSON.parse(t); } catch (e) { return { ok: false, status: res.status, body: t.slice(0, 200) }; }
+    const t = await res.text(); let j; try { j = JSON.parse(t); } catch (e) { return { ok: false, status: res.status, body: t.slice(0, 200) }; }
+    if (j && j.ok && window.__LINE) j.line = await notifyLine({ order: o.order, name: o.name, version: j.version, note: o.lineNote || '', design: dOut, submission }); // LINE 連携（試作）：__LINE があるときだけ
+    return j;
   } finally { fr.remove(); }
+};
+// LINE グループに修正版を送る（worker/line-bot.js の /notify）。window.__LINE = {url:'https://…workers.dev', pass:'合言葉'} を指示文の側で入れたときだけ動く
+window.notifyLine = async ({ order, name, version, note, design, submission }) => {
+  try {
+    const b64 = async blob => { const u = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
+    const jpg = async (blob, max, q) => { const bm = await createImageBitmap(blob); const k = Math.min(1, max / Math.max(bm.width, bm.height)); const c = new OffscreenCanvas(Math.round(bm.width * k), Math.round(bm.height * k)); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); return b64(await c.convertToBlob({ type: 'image/jpeg', quality: q })); };
+    const pair = async blob => blob ? { full: await jpg(blob, 2048, 0.88), preview: await jpg(blob, 600, 0.8) } : null; // LINE：元画像10MB・プレビュー1MBまで
+    const r = await fetch(__LINE.url.replace(/\/$/, '') + '/notify', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Tool-Pass': __LINE.pass },
+      body: JSON.stringify({ order, name, version, note, design: await pair(design), submission: await pair(submission) }) });
+    const j = await r.json().catch(() => ({ ok: false, error: 'HTTP ' + r.status })); return j.ok ? 'LINE送信' : 'LINE失敗 ' + j.error;
+  } catch (e) { return 'LINE失敗 ' + e.message; }
 };
 // 裏の文字：仕様の back／backOpt。仕様に無い古い案件は window.__backFor = {'<id>': '文字' または {text:'文字', dir, font, color1, color2}} で渡す
 window.backOf = (sp, id) => { const f = (window.__backFor || {})[id]; const fo = f && typeof f === 'object' ? f : null;
@@ -85,7 +98,7 @@ window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
     const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + c.asset, asset: c.asset, order: it.order, name: it.name,
       shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', ...backOf(sp, it.id), confirmed: c.asset, note: 'Decolinoで確定した修正版',
       fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
-    res.push(tag + '：' + (r.ok ? 'v' + r.version + ' に更新' : '失敗 ' + (r.error || r.status))); done++;
+    res.push(tag + '：' + (r.ok ? 'v' + r.version + ' に更新' + (r.line ? '（' + r.line + '）' : '') : '失敗 ' + (r.error || r.status))); done++;
   }
   return res;
 };
@@ -121,9 +134,10 @@ window.finishFix = async id => {
   const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + asset, asset, order: it.order, name: it.name,
     shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', ...backOf(sp, id), confirmed: (cf && cf.asset) || 'none', fixDone: true,
     note: '修正指示「' + it.fix + '」で作り直し（Decolinoは未確定）',
+    lineNote: '修正：' + it.fix,
     fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
   if (!r.ok) await siteApi({ action: 'fixState', id, state: 'エラー:' + (r.error || r.status) });
-  return r.ok ? 'v' + r.version + ' に更新' : '失敗 ' + (r.error || r.status);
+  return r.ok ? 'v' + r.version + ' に更新' + (r.line ? '（' + r.line + '）' : '') : '失敗 ' + (r.error || r.status);
 };
 window.decolinoHasTag = async tag => {
   const h = await fetch('/projects?q=' + encodeURIComponent(tag)).then(r => r.text());
