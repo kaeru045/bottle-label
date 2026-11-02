@@ -63,3 +63,9 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 
 ## ネックシールの色（自動）
 - 仕様の seal を `sl_lx_auto` にすると、デザインの明るさで自動で決まる（薄い色→ホワイト、濃い色→ブラック）。依頼に色の指定が無い・おまかせのときはこれにする。白・黒・金・銀の指定があればそのまま。
+
+## 高級感の書体と効果（2026-11-02 追加）
+- 書体（textlayer の飾り方）：champagne シャンパンゴールド／platinum プラチナ／royal ロイヤル（大文字だけの文言のみ）／allura ゴールド筆記体／rosegold ローズゴールド／mode モード／engrave 彫刻ゴールド。日本語も書ける：jgold 金の明朝／jplatinum 銀の明朝／jrose ローズの明朝。夜・ホスト・キャバ・高級・周年の画像では、これらを優先して3案に入れる。
+- 効果：どの飾り方にも `--effect shadow|glow|emboss|3d|neon|outline`（「shadow+glow」のように重ねる）、または `--style 'luxury:3d'` の形で足せる（textopts の `--styles` も同じ書き方。管理サイトでは「ラグジュアリー・立体」のように表示）。
+  - shadow 影／glow 光／emboss 浮き彫り／3d 立体／neon ネオン／outline 縁取り
+- 裏の文字にも高級感の書体（shippori しっぽり明朝・oldmincho Zen Old Mincho・kaisei Kaisei Decol・cormorant・bodoni・cinzelr（大文字だけ）・allura・parisienne・italiana・marcellus）と効果（backOpt の effect：shadow／glow／emboss／3d、「shadow+glow」で重ねる）を足した。提出用ツールのステップ2「裏の文字」にも「効果」がある。

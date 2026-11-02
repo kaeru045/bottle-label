@@ -206,7 +206,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 11/01 13:20</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 11/02 19:30</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -264,6 +264,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
         <input type="text" id="backText" placeholder="例：酒を飲むなら、|粋に飲め（| で改行）" aria-label="裏の文字">
         <div class="row"><label for="backDir">向き</label><select id="backDir"><option value="auto">自動</option><option value="v">縦書き</option><option value="h">横書き</option><option value="r">横書き（90°回す）</option></select></div>
         <div class="row"><label for="backFont">書体</label><select id="backFont"></select></div>
+        <div class="row"><label for="backEffect">効果</label><select id="backEffect"><option value="">なし</option><option value="shadow">影</option><option value="glow">光（グロー）</option><option value="emboss">浮き彫り</option><option value="3d">立体</option><option value="shadow+glow">影＋光</option></select></div>
         <div class="row"><label for="backColorMode">色</label><select id="backColorMode"><option value="auto">デザインに合わせて自動</option><option value="pick">指定する</option></select><span id="backColors" hidden><input type="color" id="backC1" value="#fff3c4" aria-label="上の色"> <input type="color" id="backC2" value="#c8902a" aria-label="下の色"></span></div>
         <div class="links"><button class="link" id="backApply" type="button">裏の文字を入れる</button></div>
         <p class="tiny">大きさは左右の帯（背面）と上下の帯に収まるよう自動で決まります。文字は入れたとおりに描きます。</p>
@@ -1300,7 +1301,18 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     caveat:{label:'Caveat（手書き）', pkg:'caveat', fam:'Caveat', w:700},
     pirata:{label:'Pirata（海賊）', pkg:'pirata-one', fam:'Pirata One', w:400},
     fraktur:{label:'Fraktur（ゴシック体）', pkg:'unifrakturmaguntia', fam:'UnifrakturMaguntia', w:400},
-    rye:{label:'Rye（ウエスタン）', pkg:'rye', fam:'Rye', w:400}
+    rye:{label:'Rye（ウエスタン）', pkg:'rye', fam:'Rye', w:400},
+    // 高級感（2026-11-02 追加）
+    shippori:{label:'しっぽり明朝（高級）', pkg:'shippori-mincho', fam:'Shippori Mincho', w:800, jp:1},
+    oldmincho:{label:'Zen Old Mincho（高級）', pkg:'zen-old-mincho', fam:'Zen Old Mincho', w:700, jp:1},
+    kaisei:{label:'Kaisei Decol（上品）', pkg:'kaisei-decol', fam:'Kaisei Decol', w:700, jp:1},
+    cormorant:{label:'Cormorant（高級）', pkg:'cormorant-garamond', fam:'Cormorant Garamond', w:700},
+    bodoni:{label:'Bodoni（ハイブランド）', pkg:'bodoni-moda', fam:'Bodoni Moda', w:700},
+    cinzelr:{label:'Cinzel（大文字だけ・高級）', pkg:'cinzel', fam:'Cinzel', w:700, caps:1},
+    allura:{label:'Allura（筆記体）', pkg:'allura', fam:'Allura', w:400},
+    parisienne:{label:'Parisienne（筆記体）', pkg:'parisienne', fam:'Parisienne', w:400},
+    italiana:{label:'Italiana（細身）', pkg:'italiana', fam:'Italiana', w:400},
+    marcellus:{label:'Marcellus（彫刻風）', pkg:'marcellus', fam:'Marcellus', w:400}
   };
   window.__BACKFONTS = BACKFONTS;
   const backFontReady = async (k, text) => {
@@ -1351,7 +1363,19 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     const fs = 150, pad = 30, gap = 40, font = `${F.w} ${fs}px ${F.pkg ? '"' + F.fam + '",' : ''}${BACKFONTS.mincho.fam}`;
     const col = (o.color1 || o.color2) ? { c1:o.color1 || o.color2, c2:o.color2 || o.color1, stroke:o.stroke || '#222' } : Object.assign(backAutoColor(), o.stroke ? { stroke:o.stroke } : {});
     const grad = (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, col.c1); g.addColorStop(1, col.c2); return g; };
-    const ink = (x, s, px, py, g) => { x.lineJoin = 'round'; x.strokeStyle = col.stroke; x.lineWidth = 10; x.strokeText(s, px, py); x.fillStyle = g; x.fillText(s, px, py); };
+    // 効果 o.effect：shadow 影／glow 光／emboss 浮き彫り／3d 立体（2026-11-02 ユーザー指定で追加。無ければ今までどおり）
+    const eff = String(o.effect || '').split(/[+,\s]+/).filter(Boolean);
+    const ink = (x, s, px, py, g) => {
+      x.save(); x.lineJoin = 'round';
+      if (eff.includes('3d')) { x.fillStyle = 'rgba(20,12,4,.9)'; for (let i = 7; i >= 1; i--) { x.strokeStyle = 'rgba(20,12,4,.9)'; x.lineWidth = 10; x.strokeText(s, px + i * 1.2, py + i * 1.6); x.fillText(s, px + i * 1.2, py + i * 1.6); } }
+      if (eff.includes('emboss')) { x.fillStyle = 'rgba(0,0,0,.65)'; x.strokeStyle = 'rgba(0,0,0,.65)'; x.lineWidth = 10; x.strokeText(s, px + 4, py + 5); x.fillText(s, px + 4, py + 5); x.fillStyle = 'rgba(255,255,255,.75)'; x.strokeStyle = 'rgba(255,255,255,.75)'; x.strokeText(s, px - 3, py - 3); x.fillText(s, px - 3, py - 3); }
+      if (eff.includes('shadow')) { x.shadowColor = 'rgba(0,0,0,.7)'; x.shadowBlur = 22; x.shadowOffsetX = 6; x.shadowOffsetY = 9; }
+      if (eff.includes('glow')) { x.shadowColor = 'rgba(255,236,190,.95)'; x.shadowBlur = 34; x.shadowOffsetX = 0; x.shadowOffsetY = 0; }
+      x.strokeStyle = col.stroke; x.lineWidth = 10; x.strokeText(s, px, py);
+      x.shadowColor = 'transparent'; x.fillStyle = g; x.fillText(s, px, py);
+      if (eff.includes('glow')) { x.shadowColor = 'rgba(255,236,190,.8)'; x.shadowBlur = 16; x.fillText(s, px, py); }
+      x.restore();
+    };
     const c = document.createElement('canvas'), m = c.getContext('2d'); m.font = font;
     if (dir === 'v') {
       const rows = Math.max(...lines.map(l => [...l].length));
@@ -1398,7 +1422,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     const sel = $('backFont'); if (!sel) return;
     sel.innerHTML = '<option value="">自動</option>' + Object.entries(BACKFONTS).map(([k, f]) => `<option value="${k}">${f.label}</option>`).join('');
     $('backApply').addEventListener('click', async () => {
-      const o = { dir: $('backDir').value, font: sel.value };
+      const o = { dir: $('backDir').value, font: sel.value, effect: $('backEffect').value };
       if ($('backColorMode').value === 'pick') { o.color1 = $('backC1').value; o.color2 = $('backC2').value; }
       const r = await window.__setBackText($('backText').value, o);
       status(r ? `裏の文字を入れました（${{v:'縦書き',h:'横書き',r:'横書き・90°'}[r.dir]}・${BACKFONTS[r.font].label}）。` : '裏の文字を外しました。');

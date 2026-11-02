@@ -28,10 +28,13 @@ FONTS = {'pirata': 'pirata-one', 'vibes': 'great-vibes', 'bangers': 'bangers', '
          'lobster': 'lobster', 'fredoka': 'fredoka', 'fraktur': 'unifrakturmaguntia', 'rye': 'rye', 'luckiest': 'luckiest-guy',
          'playfair': 'playfair-display',
          'mochiy': 'mochiy-pop-one', 'zenantique': 'zen-antique', 'yuji': 'yuji-syuku', 'zenmaru': 'zen-maru-gothic',
-         'hachimaru': 'hachi-maru-pop', 'dela': 'dela-gothic-one'}
-JPFONTS = {'mochiy', 'zenantique', 'yuji', 'zenmaru', 'hachimaru', 'dela'}
+         'hachimaru': 'hachi-maru-pop', 'dela': 'dela-gothic-one',
+         # 高級感（2026-11-02 追加）
+         'cormorant': 'cormorant-garamond', 'bodoni': 'bodoni-moda', 'cinzelr': 'cinzel', 'allura': 'allura', 'parisienne': 'parisienne',
+         'italiana': 'italiana', 'marcellus': 'marcellus', 'shippori': 'shippori-mincho', 'oldmincho': 'zen-old-mincho', 'kaisei': 'kaisei-decol'}
+JPFONTS = {'mochiy', 'zenantique', 'yuji', 'zenmaru', 'hachimaru', 'dela', 'shippori', 'oldmincho', 'kaisei'}
 # 小文字が無く、全部大文字に見えてしまう書体。依頼の文字は変えないので、小文字を含む文言には使わない
-CAPSFONTS = {'bangers', 'cinzel', 'luckiest', 'marker'}
+CAPSFONTS = {'bangers', 'cinzel', 'luckiest', 'marker', 'cinzelr'}
 
 
 def changes_case(style, text):
@@ -71,6 +74,38 @@ STYLES = {
                   shadow=SH('.07em .08em 0 #e8390e', '.11em .12em 0 #111'), spacing='0.03em', line=0.95),
     'luxury': dict(jp='ラグジュアリー', mood='シャンパン・ホテル・黒×金・大人の高級感', font='playfair', weight=700, fill=G('#fffdf4', '#ead9a8 45%', '#b08d47'), stroke='', strokew=0,
                    shadow=SH('0 .03em 0 rgba(40,25,0,.85)', '0 .1em .25em rgba(0,0,0,.6)'), spacing='0.06em', line=1.0),
+    # 高級感（2026-11-02 追加。影・光・浮き彫りなどの効果つき）
+    'champagne': dict(jp='シャンパンゴールド', mood='高級・シャンパン・ホスト・キャバ・黒や濃い背景', font='cormorant', weight=700,
+                      fill=G('#fffaf0 0%', '#f6e3b0 30%', '#d4af62 55%', '#fff3cf 75%', '#b88a3e 100%'), stroke='', strokew=0,
+                      shadow=SH('0 .025em 0 rgba(70,45,10,.9)', '0 .08em .12em rgba(0,0,0,.65)', '0 0 .3em rgba(255,225,160,.45)'), spacing='0.05em', line=1.0),
+    'platinum': dict(jp='プラチナ', mood='高級・モノトーン・黒×銀・クール・大人', font='bodoni', weight=700,
+                     fill=G('#ffffff 0%', '#e9edf2 35%', '#a9b1bb 55%', '#f7f9fb 75%', '#8b939d 100%'), stroke='', strokew=0,
+                     shadow=SH('0 .03em 0 rgba(20,24,30,.9)', '0 .1em .18em rgba(0,0,0,.7)'), spacing='0.04em', line=1.0),
+    'royal': dict(jp='ロイヤル', mood='高級・周年・王冠・黒×金・重厚（大文字だけの文言のみ）', font='cinzelr', weight=700,
+                  fill=G('#fff8dc 0%', '#f1cf72 40%', '#a8771f 62%', '#ffe9a8 82%', '#8a5e15 100%'), stroke='#2b1a05', strokew=0.035,
+                  shadow=SH('0 .12em .2em rgba(0,0,0,.65)'), tshadow='0 .015em 0 #5a3b0a, 0 .03em 0 #4a3008, 0 .045em 0 #3a2506, 0 .06em 0 #2b1a05', spacing='0.06em', line=1.0),
+    'allura': dict(jp='ゴールド筆記体', mood='高級・上品・女性・誕生日・ピンクや黒', font='allura', weight=400,
+                   fill=G('#fffaf0', '#f3d58b 50%', '#c99a3e'), stroke='', strokew=0,
+                   shadow=SH('0 .02em 0 rgba(80,50,10,.9)', '0 0 .12em rgba(255,230,170,.75)', '0 .08em .2em rgba(0,0,0,.55)'), spacing='0', line=0.95),
+    'rosegold': dict(jp='ローズゴールド', mood='高級・ピンク・女性・キャバ・ゆめかわ大人', font='parisienne', weight=400,
+                     fill=G('#fff1ee', '#f2b8a8 45%', '#b9705e'), stroke='', strokew=0,
+                     shadow=SH('0 .02em 0 rgba(90,35,30,.85)', '0 0 .14em rgba(255,200,190,.7)', '0 .08em .2em rgba(0,0,0,.5)'), spacing='0', line=0.95),
+    'mode': dict(jp='モード', mood='高級・ファッション・雑誌・ハイブランド・白や淡い背景', font='italiana', weight=400,
+                 fill=G('#ffffff', '#f4f1ea'), stroke='', strokew=0,
+                 shadow=SH('0 0 .02em rgba(0,0,0,.9)', '0 .05em .1em rgba(0,0,0,.6)', '0 0 .35em rgba(0,0,0,.35)'), spacing='0.12em', line=1.05),
+    'engrave': dict(jp='彫刻ゴールド', mood='高級・クラシック・ホテル・大理石・重厚', font='marcellus', weight=400,
+                    fill=G('#fdf3d6', '#d9b46a 50%', '#9c7330'), stroke='', strokew=0,
+                    shadow=SH('-.02em -.02em 0 rgba(255,250,230,.8)', '.03em .04em 0 rgba(40,25,5,.9)', '0 .1em .2em rgba(0,0,0,.55)'), spacing='0.05em', line=1.0),
+    # 日本語も書ける高級感
+    'jgold': dict(jp='金の明朝', mood='日本語・高級・ホスト・キャバ・和モダン・黒背景', font='shippori', weight=800,
+                  fill=G('#fffaf0 0%', '#f6dc9a 35%', '#c8963c 60%', '#fff0c0 80%', '#a87a26 100%'), stroke='#2a1a06', strokew=0.03,
+                  shadow=SH('0 .02em 0 rgba(60,35,5,.9)', '0 .08em .16em rgba(0,0,0,.65)', '0 0 .25em rgba(255,220,150,.4)'), spacing='0.06em', line=1.15),
+    'jplatinum': dict(jp='銀の明朝', mood='日本語・高級・モノトーン・クール', font='oldmincho', weight=700,
+                      fill=G('#ffffff', '#dfe4ea 45%', '#9aa3ae'), stroke='#15181d', strokew=0.03,
+                      shadow=SH('0 .02em 0 rgba(10,12,16,.9)', '0 .08em .16em rgba(0,0,0,.65)'), spacing='0.06em', line=1.15),
+    'jrose': dict(jp='ローズの明朝', mood='日本語・高級・ピンク・女性・上品', font='kaisei', weight=700,
+                  fill=G('#fff3f0', '#f0b3a5 50%', '#b06a5a'), stroke='#ffffff', strokew=0.05,
+                  shadow=SH('0 .03em 0 rgba(120,50,40,.8)', '0 .08em .18em rgba(0,0,0,.45)'), spacing='0.05em', line=1.15),
     # 日本語も書ける
     'jpop': dict(jp='和ポップ', mood='日本語・子ども・元気', font='mochiy', weight=400, fill=G('#ff7eb6', '#ff3d7f'), stroke='#ffffff', strokew=0.12,
                  shadow=SH('0 .05em 0 #c2185b', '0 .1em .2em rgba(0,0,0,.35)'), spacing='0.02em', line=1.1),
@@ -85,6 +120,29 @@ STYLES = {
     'gokubuto': dict(jp='極太', mood='日本語・インパクト・スポーツ・お祝い', font='dela', weight=400, fill=G('#ffe14d', '#ffb800'), stroke='#d7191c', strokew=0.1,
                      shadow=SH('.05em .06em 0 #7a0a0c', '0 .1em .2em rgba(0,0,0,.45)'), spacing='0.02em', line=1.1),
 }
+
+
+# 足せる効果（2026-11-02 ユーザー指定）。--effect shadow,glow など、または --style 'luxury:shadow+glow'
+EFFECTS = {
+    'shadow': ('影', SH('.04em .06em .05em rgba(0,0,0,.75)', '0 .14em .3em rgba(0,0,0,.5)')),
+    'glow': ('光', SH('0 0 .06em rgba(255,240,200,.95)', '0 0 .25em rgba(255,210,130,.7)')),
+    'emboss': ('浮き彫り', SH('-.02em -.025em 0 rgba(255,255,255,.75)', '.025em .035em 0 rgba(0,0,0,.75)')),
+    '3d': ('立体', SH('0 .16em .25em rgba(0,0,0,.5)'), '.012em .016em 0 #2a1a06, .024em .032em 0 #24170a, .036em .048em 0 #1e1308, .048em .064em 0 #191006, .06em .08em 0 #140c04'),
+    'neon': ('ネオン', SH('0 0 .12em #ffd36b', '0 0 .35em rgba(255,150,0,.75)')),
+    'outline': ('縁取り', ''),
+}
+
+
+def with_effect(st, effects):
+    st = dict(st)
+    for e in [x for x in re.split(r'[+,\s]+', effects or '') if x]:
+        if e not in EFFECTS: raise SystemExit(f'効果「{e}」はありません（{", ".join(EFFECTS)}）')
+        if e == 'outline':
+            if not st['strokew']: st['stroke'], st['strokew'] = '#1a1206', 0.05
+            continue
+        st['shadow'] = (st['shadow'] + ' ' + EFFECTS[e][1]).strip()
+        if len(EFFECTS[e]) > 2: st['tshadow'] = ', '.join(x for x in [st.get('tshadow', ''), EFFECTS[e][2]] if x)
+    return st
 
 
 def _pkg(name):
@@ -128,7 +186,7 @@ def font_css(key, weight, text):
         data = base64.b64encode(open(os.path.join(d, 'files', f.group(1)), 'rb').read()).decode()
         out.append(f"@font-face{{font-family:F;src:url(data:font/woff2;base64,{data}) format('woff2');font-weight:{weight};unicode-range:{u.group(1)}}}")
     miss = chars - covered
-    if miss: raise SystemExit(f'書体「{STYLES_BY_FONT.get(key, key)}」では書けない文字があります：' + ''.join(sorted(chr(c) for c in miss)) + '（日本語は jpop / fude / wamodern / maru / kawaii / gokubuto）')
+    if miss: raise SystemExit(f'書体「{STYLES_BY_FONT.get(key, key)}」では書けない文字があります：' + ''.join(sorted(chr(c) for c in miss)) + '（日本語は jpop / fude / wamodern / maru / kawaii / gokubuto / jgold / jplatinum / jrose）')
     return ''.join(out)
 
 
@@ -144,7 +202,8 @@ async def render(text, st, width, rotate, c1, c2):
     fill = st['fill'] if not c1 else f'linear-gradient(180deg,{c1},{c2 or c1})'
     import html as _h
     # 1行＝縁取りの層（下）と色の層（上）を同じ位置に重ねる
-    lines = ''.join(f'<div class="l">' + (f'<span class="s">{_h.escape(l)}</span>' if st['strokew'] else '') + f'<span class="f">{_h.escape(l)}</span></div>'
+    # 立体の重ねた影（tshadow）は filter だと重いので、下の層の text-shadow で描く
+    lines = ''.join(f'<div class="l">' + (f'<span class="s">{_h.escape(l)}</span>' if st['strokew'] or st.get('tshadow') else '') + f'<span class="f">{_h.escape(l)}</span></div>'
                     for l in text.split('|'))
     html = f"""<html><head><style>
     {ffcss}
@@ -152,7 +211,7 @@ async def render(text, st, width, rotate, c1, c2):
     #w{{position:absolute;left:0;top:0;display:inline-block;padding:.35em .45em;transform-origin:center}}
     .t{{font-family:F;font-weight:{st['weight']};font-size:200px;line-height:{st['line']};letter-spacing:{st['spacing']};text-align:center;white-space:nowrap;filter:{st['shadow']}}}
     .l{{display:grid;justify-items:center}} .l>span{{grid-area:1/1;padding:.35em .5em;margin:-.35em -.5em}}
-    .s{{color:{st['stroke'] or 'transparent'};-webkit-text-stroke:{st['strokew'] * 2}em {st['stroke'] or 'transparent'}}}
+    .s{{color:{st['stroke'] or 'transparent'};-webkit-text-stroke:{st['strokew'] * 2}em {st['stroke'] or 'transparent'};text-shadow:{st.get('tshadow') or 'none'}}}
     .f{{background:{fill};-webkit-background-clip:text;background-clip:text;color:transparent}}
     </style></head><body><div id="w"><div class="t">{lines}</div></div></body></html>"""
     async with async_playwright() as p:
@@ -165,7 +224,7 @@ async def render(text, st, width, rotate, c1, c2):
         r = await pg.evaluate("(() => { const r = document.getElementById('w').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; })()")
         pad = 200
         await pg.evaluate(f"document.getElementById('w').style.left = '{pad - r[0]}px'; document.getElementById('w').style.top = '{pad - r[1]}px'")
-        png = await pg.screenshot(omit_background=True, clip={'x': 0, 'y': 0, 'width': r[2] + 2 * pad, 'height': r[3] + 2 * pad})
+        png = await pg.screenshot(timeout=180000, omit_background=True, clip={'x': 0, 'y': 0, 'width': r[2] + 2 * pad, 'height': r[3] + 2 * pad})
         await b.close()
     return cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_UNCHANGED)
 
@@ -200,12 +259,13 @@ def _contrast(im, t, x0, y0):
     return float(lum(sub[..., :3].astype(np.float32))[core].mean()), float(lum(bg.astype(np.float32))[ring].mean())
 
 
-def apply(design, out_path, text, style, cx=None, cy=None, width=1800, rotate=0, placement='', color1='', color2=''):
+def apply(design, out_path, text, style, cx=None, cy=None, width=1800, rotate=0, placement='', color1='', color2='', effect=''):
     """文字を入れて out_path に書き出す。cx/cy が無ければ人物の下（白い範囲の下端）。"""
+    style, _, eff = style.partition(':'); effect = '+'.join(x for x in [eff, effect] if x)
     style = {v['jp']: k for k, v in STYLES.items()}.get(style, style)
     if changes_case(style, text): raise SystemExit(f'「{STYLES[style]["jp"]}」は全部大文字に見える書体なので、小文字を含む「{text}」には使えません（文字は依頼のまま変えない）')
     im = cv2.imread(design); assert im is not None and im.shape[1] == W, 'デザイン画像は 2880×2048'
-    st = dict(STYLES[style])
+    st = with_effect(STYLES[style], effect)
     t = asyncio.run(render(text, st, width, rotate, color1, color2))
     th, tw = t.shape[:2]
     for _ in range(2):  # 背景に埋もれないように：文字と下の背景の明るさが近ければ、縁に影（または光）を足して描き直す
@@ -233,14 +293,16 @@ def apply(design, out_path, text, style, cx=None, cy=None, width=1800, rotate=0,
 def main():
     if '--list' in sys.argv:
         for k, v in STYLES.items(): print(f"{k:10s} {v['jp']}{'（日本語可）' if v['font'] in JPFONTS else ''}{'（大文字だけの文言のみ）' if v['font'] in CAPSFONTS else ''}：{v['mood']}")
+        print('効果（--effect、または --style 名前:効果）：' + '／'.join(f'{k} {v[0]}' for k, v in EFFECTS.items()))
         return
     ap = argparse.ArgumentParser()
     ap.add_argument('design'); ap.add_argument('out'); ap.add_argument('--text', required=True); ap.add_argument('--style', required=True, help='STYLES のキー（pirate など）か日本語の名前（海賊風など）。python3 textlayer.py --list で一覧')
     ap.add_argument('--cx', type=float); ap.add_argument('--cy', type=float); ap.add_argument('--placement', default='')
     ap.add_argument('--width', type=float, default=1800); ap.add_argument('--rotate', type=float, default=0)
     ap.add_argument('--color1', default=''); ap.add_argument('--color2', default='')
+    ap.add_argument('--effect', default='', help='足す効果：' + '／'.join(f'{k} {v[0]}' for k, v in EFFECTS.items()) + '（「shadow+glow」のように重ねられる）')
     a = ap.parse_args()
-    print(json.dumps(apply(a.design, a.out, a.text, a.style, a.cx, a.cy, a.width, a.rotate, a.placement, a.color1, a.color2), ensure_ascii=False))
+    print(json.dumps(apply(a.design, a.out, a.text, a.style, a.cx, a.cy, a.width, a.rotate, a.placement, a.color1, a.color2, a.effect), ensure_ascii=False))
 
 
 if __name__ == '__main__':

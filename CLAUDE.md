@@ -36,3 +36,4 @@
 - 裏の文字（Asanaの「裏：〇〇」）は `await window.__setBackText(text, {dir, font, color1, color2, stroke})` でロゴ位置に入れる（向きは縦書き v／横書き h／90° r／auto、書体は `BACKFONTS`＝jsdelivr の @fontsource、色は省くとデザインから自動）。大きさは自動でフォーマット内（幅≦240px・高さ≦600px・中心585px、1440×1024換算）。`window.__designJpeg()` で文字入りのデザイン画像。画面はステップ2「裏の文字」。2026-10-29 ユーザー指定（色・書体はデザインに合わせる、縦書きに限らない）。
 - 公開ページにお客様のロゴ等のサンプルを入れない。
 - ネックシールの「自動」（`sl_lx_auto`、既定）：デザイン全体の平均の明るさが0.5以上ならホワイト、未満ならブラック（`sealAuto()`／`window.__sealAuto()`）。依頼に色の指定が無い・おまかせのときは自動処理もこれを使う。2026-11-01 ユーザー指定（薄い色のデザインは白、濃い色のデザインは黒）。
+- 裏の文字の効果（backOpt.effect：shadow／glow／emboss／3d、「+」で重ねる）と高級感の書体（shippori・oldmincho・kaisei・cormorant・bodoni・cinzelr・allura・parisienne・italiana・marcellus）を追加。2026-11-02 ユーザー指定（高級感のある文字・シャドーなどの効果）。

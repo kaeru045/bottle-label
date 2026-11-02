@@ -13,7 +13,7 @@ import cv2
 from textlayer import apply, STYLES
 from common import api, b64file
 
-from textlayer import JPFONTS, has_jp, changes_case
+from textlayer import JPFONTS, has_jp, changes_case, EFFECTS
 NAMES = {k: v['jp'] for k, v in STYLES.items()}
 WIDTH = {'script': 2604, 'pop': 2436, 'gold': 2436, 'comic': 2436, 'luxury': 2436}  # 2026-10-29 にさらに1.4倍（ユーザー指定）。はみ出すときは下で縮める
 WDEF = 2520
@@ -33,20 +33,21 @@ if '|' not in text and len(text) > 18 and ' ' in text:  # 長い文言は2行に
 two = '|' in text
 res, opts = [], []
 for i, st in enumerate(styles):
+    st, _, eff = st.partition(':')  # 「luxury:shadow+glow」のように効果を足せる
     st = {v['jp']: k for k, v in STYLES.items()}.get(st, st)
     if st not in STYLES: sys.exit('不明な飾り方：' + st)
     if changes_case(st, text): sys.exit(f'{STYLES[st]["jp"]} は全部大文字に見える書体なので「{text}」には使えません（文字は変えない。別の書体を選ぶ）')
-    if has_jp(text) and STYLES[st]['font'] not in JPFONTS: sys.exit(f'日本語の文字は {STYLES[st]["jp"]} では書けません（jpop / fude / wamodern / maru / kawaii / gokubuto から選ぶ）')
+    if has_jp(text) and STYLES[st]['font'] not in JPFONTS: sys.exit(f'日本語の文字は {STYLES[st]["jp"]} では書けません（jpop / fude / wamodern / maru / kawaii / gokubuto / jgold / jplatinum / jrose から選ぶ）')
     out = os.path.join(a.dir, f'text{i + 1}.jpg')
     w = WIDTH.get(st, WDEF) * (0.62 if two else 1)
-    r = apply(os.path.join(a.dir, 'design.jpg'), out, text, st, width=w, rotate=rots[i])
+    r = apply(os.path.join(a.dir, 'design.jpg'), out, text, st, width=w, rotate=rots[i], effect=eff)
     for _ in range(8):  # 白い範囲からはみ出す・顔に重なるときは小さく
         if not (r['outside_safe'] or r['over_face']): break
-        w *= 0.88; r = apply(os.path.join(a.dir, 'design.jpg'), out, text, st, width=w, rotate=rots[i])
+        w *= 0.88; r = apply(os.path.join(a.dir, 'design.jpg'), out, text, st, width=w, rotate=rots[i], effect=eff)
     pv = os.path.join(a.dir, f'text{i + 1}_preview.jpg')
     im = cv2.imread(out); cv2.imwrite(pv, cv2.resize(im, (900, 640), interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 82])
     r.update(style=st, width=round(w)); res.append(r)
-    nm = NAMES.get(st, st)
+    nm = NAMES.get(st, st) + (''.join('・' + EFFECTS[e][0] for e in eff.split('+') if e in EFFECTS) if eff else '')
     op = {'style': nm, 'design': b64file(out, f'文字案{i + 1}_{nm}デザイン画像.jpg'), 'preview': b64file(pv, f'文字案{i + 1}_{nm}_小.jpg')}
     if a.spec is not None:  # 提出用フォーマットまで作る
         od = os.path.join(a.dir, f'opt{i + 1}')
