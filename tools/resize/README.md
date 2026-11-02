@@ -17,7 +17,7 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 ## 修正依頼（管理サイトの「🔧 修正を依頼」）
 リサイズの案件（テンプレ＝リサイズ）の修正依頼は Decolino 側には出ず、`candidates.py fixes` でだけ取れる。
 1. `candidates.py fixstate <一覧のID> "生成中|<今のミリ秒>|"` → `candidates.py fixsrc <一覧のID> DIR/src.jpg`（その案件を作った元画像）
-2. 修正内容に合わせて `place.py`（`--pos` `--zoom` `--dx` `--dy`）→ 生成拡張（3回に分けて）→ `finish.py` → `compose.py`（仕様の変更があれば spec を変える）
+2. 修正内容に合わせて `place.py`（`--pos` `--zoom` `--dx` `--dy`）→ 生成拡張（3回に分けて）→ `finish.py` → `compose.py`（仕様の変更があれば spec を変える）。修正が「タグに人物が収まるように」などタグの中の位置なら、デザインは作り直さず `compose.py --tag-adj '{"x":-18,"y":0,"z":50}'`（提出用ツールの「タグ内の画像の位置」と同じ：x 左右・y 上下 -50〜50、z 大きさ% 50＝枠をちょうど覆う）で tag.png を見ながら合わせる
 3. `register.py ... --fix "<修正内容>"`（同じ注文・名前で登録 → 版が上がり、修正前は履歴に残り、修正指示が消えて「修正済み」になる）
 4. 失敗したら `candidates.py fixstate <一覧のID> "エラー:<理由>"`
 

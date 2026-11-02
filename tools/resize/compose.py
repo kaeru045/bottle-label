@@ -8,12 +8,15 @@
 --back（Asanaの「裏：〇〇」の文字。一字も変えない。「|」で改行）があると、提出用の裏（ロゴの位置）に文字を入れ、
 --back-opt '{"dir":"v|h|r|auto","font":"<書体キー>","color1":"#..","color2":"#..","stroke":"#.."}'（省略可。色を省くとデザインの色から自動、書体キーは提出用ツールの BACKFONTS）。
 同じ文字が入ったデザイン画像を DIR/design_back.jpg に書く（register.py はこれがあれば design.jpg の代わりに送る）。
+--tag-adj '{"x":0,"y":0,"z":50}' … タグ内の画像の位置（提出用ツールの「タグ内の画像の位置」と同じ：x 左右・y 上下 -50〜50〈＋で右・上〉、z 大きさ% 10〜150〈50＝枠をちょうど覆う〉）。
+  修正依頼「タグに人物が収まるように」などで使う。DIR/tag.png を見て人物（頭〜体）がタグの形に入るよう x・z を決める。
 """
 import argparse, asyncio, base64, json, os, sys
 from playwright.async_api import async_playwright
 
 ap = argparse.ArgumentParser()
 ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default=''); ap.add_argument('--back-opt', default='{}'); ap.add_argument('--out', required=True)
+ap.add_argument('--tag-adj', default='', help='タグ内の画像の位置 {"x":左右,"y":上下,"z":大きさ%%}')
 ap.add_argument('--html', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'index.html'))
 a = ap.parse_args()
 spec, checks = json.loads(a.spec), json.loads(a.checks)
@@ -47,6 +50,15 @@ async def main():
             await loc.first.evaluate('el => el.click()'); await pg.wait_for_timeout(500)
         for i in checks:
             await pg.evaluate("id => { const el = document.getElementById(id); if (el && !el.checked) el.click(); }", i); await pg.wait_for_timeout(300)
+        if a.tag_adj.strip():
+            t = json.loads(a.tag_adj)
+            ok = await pg.evaluate("""t => { const k = (document.querySelector('input[name=tag]:checked') || {}).value, el = document.getElementById('tagAdj');
+              if (!k || !el || el.hidden) return false;
+              const set = (id, v) => { if (v === undefined) return; const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
+              set('tx', t.x); set('ty', t.y); set('tz', t.z); return true; }""", t)
+            if not ok:
+                sys.exit('--tag-adj：タグが選ばれていないか、位置を変えられないタグです')
+            await pg.wait_for_timeout(1500)
         back = None
         if a.back.strip():
             back = await pg.evaluate("([t, o]) => window.__setBackText(t, o)", [a.back.strip(), json.loads(a.back_opt or '{}')]); await pg.wait_for_timeout(2500)
