@@ -75,4 +75,5 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 ## オリジナルの飾り文字（deco.py、2026-11-04）
 名前ロゴ風。1行目（名前・日本語可）の字にとげ・刃・炎・したたり・ひび・ネオン管・グリッチを足して塗り、2行目以降（ローマ字など）は小さく下に重ねる。字の形・綴り・大文字小文字は書体のまま変えない。
 `python3 textlayer.py DESIGN.jpg OUT.jpg --text '如月サク|Saku Kisaragi' --style thornpink`
+かっこいい系：slashsteel/slashred・katana・darkknight・speedchrome/fire/blue・thunder・edgesteel/edgegold・carbon・titanthorn・metal3d・gold3d（立体＝extrude）。
 種類：thornpink/silver/gold/purple/holo・thorncrack・bladeice/red/gold・emeraldblade・flamefire/purple/blue・dripblood/gold/sakura・crackchrome/gold・neonpink2/neonblue2・glitchholo/glitchthorn（`--list` に合う背景）。--color1/--color2 で塗りの色を上書き。

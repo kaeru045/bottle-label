@@ -171,6 +171,24 @@ STYLES.update({
     'glitchthorn': _D('グリッチ＋とげ', '名前ロゴ・サイバー・ヴィジュアル系・暗い背景', 'chokoku', 'thorn', 'neonblue', _SUBI('#00b3ff'), glitch=True),
     'emeraldblade': _D('刃（エメラルド）', '名前ロゴ・緑の背景・誕生石', 'kaisei', 'blade', 'emerald', _SUBC('#0b6b44'), weight=700),
 })
+# かっこいい系（2026-11-04 ユーザー指定「かっこいい文字も追加して」）：斬り・スピード・角ばり・立体・メタル
+_SUBB = lambda c: dict(font='bodoni', weight=800, italic=True, fill=G('#ffffff', '#e8e8e8'), stroke=c, strokew=0.08, spacing='0.03em', wr=0.8)
+STYLES.update({
+    'slashsteel': _D('斬り（鋼）', 'かっこいい・侍・刀・黒や灰色の背景', 'shippori', 'slash', 'steel', _SUBB('#2e353d'), weight=800),
+    'slashred': _D('斬り（紅）', 'かっこいい・和・赤や黒の背景', 'reggae', 'slash', 'crimson', _SUBB('#6a0010')),
+    'katana': _D('刀（銀の刃＋斬り）', 'かっこいい・侍・クール・暗い背景', 'oldmincho', 'blade+slash', 'chrome', _SUBC('#3a4a66'), weight=900),
+    'speedchrome': _D('スピード（クローム立体）', 'かっこいい・車・バイク・スポーツ・ストリート', 'dela', 'skew+speed', 'chrome', _SUBI('#3a4a66'), extrude=True),
+    'speedfire': _D('スピード（炎）', 'かっこいい・熱い・スポーツ・赤やオレンジ', 'dela', 'skew+speed', 'fire', _SUBI('#a83000'), extrude=True),
+    'speedblue': _D('スピード（雷）', 'かっこいい・クール・青や黒の背景・ゲーム', 'reggae', 'skew+speed', 'electric', _SUBI('#1f5a8f')),
+    'edgesteel': _D('角ばり（鋼の立体）', 'かっこいい・メタル・ロック・灰色や黒の背景', 'zenantique', 'angular', 'steel', _SUBC('#2e353d'), extrude=True),
+    'edgegold': _D('角ばり（金の立体）', 'かっこいい・高級・王者・黒背景・周年', 'chokoku', 'angular', 'gold', _SUBC('#7a500f'), extrude=True),
+    'carbon': _D('カーボン（黒×赤）', 'かっこいい・車・ダーク・黒や赤の背景', 'dela', 'angular+skew', 'carbon', _SUBI('#e0141e'), extrude=True),
+    'metal3d': _D('メタル立体', 'かっこいい・インパクト・何にでも・暗めの背景', 'dela', 'plain', 'steel', _SUBB('#2e353d'), extrude=True),
+    'gold3d': _D('ゴールド立体', 'かっこいい・高級・ホスト・黒や赤の背景', 'dela', 'plain', 'gold', _SUBB('#7a500f'), extrude=True),
+    'titanthorn': _D('チタン（とげ＋角ばり）', 'かっこいい・ワイルド・茶や黒の背景', 'shippori', 'angular+thorn', 'titanium', _SUBC('#3d372d'), weight=800, extrude=True),
+    'darkknight': _D('ダーク（黒金の刃＋斬り）', 'かっこいい・ダーク・高級・黒背景', 'shippori', 'blade+slash', 'blackgold', _SUBB('#8a5e15'), weight=800),
+    'thunder': _D('雷（とげ＋グリッチ）', 'かっこいい・ゲーム・サイバー・青や黒の背景', 'chokoku', 'skew+thorn', 'electric', _SUBI('#1f5a8f'), glitch=True),
+})
 
 
 # 足せる効果（2026-11-02 ユーザー指定）。--effect shadow,glow など、または --style 'luxury:shadow+glow'
@@ -294,7 +312,7 @@ def render_deco(text, st, width, rotate, c1, c2):
     t = asyncio.run(render(parts[0], mst, width * 0.86, 0, '', ''))
     m, sw = deco.shape(t[..., 3], st['deco'], st.get('seed', 7))
     pal = dict(deco.PALETTES[st['pal']], **({'fill': [c1, c2 or c1]} if c1 else {}))
-    main = deco.paint(m, sw, pal, st.get('neon', False), st.get('glitch', False))
+    main = deco.paint(m, sw, pal, st.get('neon', False), st.get('glitch', False), extrude=st.get('extrude', False))
     sub = None
     if len(parts) > 1:
         sb = st['sub']; mw = np.nonzero(main[..., 3].max(0) > 8)[0]; mw = mw.max() - mw.min()

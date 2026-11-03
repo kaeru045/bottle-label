@@ -18,6 +18,12 @@ PALETTES = {
     'blackgold':dict(fill=['#4a4a4a', '#1a1a1a', '#000000', '#2a2a2a'], o1='#d6a64a', o2='#fff0b8', glow='#ffcc66', hi='#8a8a8a'),
     'fire':     dict(fill=['#fffbd0', '#ffe14d', '#ff9a1a', '#ff3d00', '#a80000'], o1='#2a0500', o2='#ffcf5a', glow='#ff6a00', hi='#ffffff'),
     'holo':     dict(fill=['#ffd6f5', '#c8b6ff', '#a6e7ff', '#b8ffd9', '#fff3b0', '#ffc6e6'], o1='#1c1030', o2='#ffffff', glow='#c38cff', hi='#ffffff'),
+    # かっこいい系（2026-11-04 追加）
+    'steel':    dict(fill=['#f4f7fa', '#b9c2cc', '#6c7783', '#2e353d', '#d5dbe2', '#8a949f'], o1='#07090c', o2='#9aa6b3', glow='#5f7fa0', hi='#ffffff', ext='#1a1f25'),
+    'carbon':   dict(fill=['#5a5a5a', '#2a2a2a', '#0a0a0a', '#1e1e1e'], o1='#e0141e', o2='#1a0003', glow='#ff2030', hi='#9a9a9a', ext='#3a0005'),
+    'electric': dict(fill=['#ffffff', '#e0f6ff', '#7fd8ff', '#2a7fff', '#ffffff'], o1='#001a40', o2='#9fe8ff', glow='#2ab0ff', hi='#ffffff', ext='#001030'),
+    'crimson':  dict(fill=['#ffd0d0', '#ff3030', '#a00010', '#3a0006'], o1='#0a0000', o2='#d8d8d8', glow='#ff1030', hi='#ffffff', ext='#200003'),
+    'titanium': dict(fill=['#ffffff', '#d8d2c4', '#8f8676', '#3d372d', '#e8e2d4', '#9a907e'], o1='#0a0806', o2='#c9b98a', glow='#c9a050', hi='#ffffff', ext='#221c12'),
     'neonpink': dict(fill=['#2a0020'], o1='#ffffff', o2='#ff4fd8', glow='#ff2ec4', hi='#ffffff'),
     'neonblue': dict(fill=['#001a2a'], o1='#ffffff', o2='#3de0ff', glow='#00b3ff', hi='#ffffff'),
 }
@@ -114,12 +120,69 @@ def _crack(m, sw, rng):
     return out
 
 
+def _skew(m, sw, k=0.22):
+    """右に傾ける（スピード感）"""
+    h, w = m.shape; p = int(h * k) + 4
+    M = np.float32([[1, -k, p], [0, 1, 0]])
+    return cv2.warpAffine(m, M, (w + p, h), flags=cv2.INTER_LINEAR)
+
+
+def _angular(m, sw):
+    """角ばらせる：輪郭を直線でつなぎ直してシャープに"""
+    cs, hi = cv2.findContours(m, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    if hi is None: return m
+    hi = hi[0]; dep = []
+    for i in range(len(cs)):
+        d, j = 0, hi[i][3]
+        while j >= 0: d += 1; j = hi[j][3]
+        dep.append(d)
+    out = np.zeros_like(m)
+    for i in sorted(range(len(cs)), key=lambda i: dep[i]):
+        ap = cv2.approxPolyDP(cs[i], max(1.5, sw * 0.22), True)
+        cv2.fillPoly(out, [ap], 0 if dep[i] % 2 else 255, cv2.LINE_AA)
+    return out
+
+
+def _slash(m, sw, rng):
+    """刀で斬ったように、斜めに切ってずらす"""
+    h, w = m.shape; ys, xs = np.nonzero(m > 128)
+    if not len(xs): return m
+    out = m.copy(); yy, xx = np.mgrid[0:h, 0:w]
+    for j in range(2):
+        cx = rng.uniform(xs.min() + (xs.max() - xs.min()) * (.25 + .4 * j), xs.min() + (xs.max() - xs.min()) * (.35 + .4 * j)); cy = (ys.min() + ys.max()) / 2
+        ang = np.deg2rad(rng.uniform(-28, -18)); d = np.array([np.cos(ang), np.sin(ang)]); n = np.array([-d[1], d[0]])
+        side = (xx - cx) * n[0] + (yy - cy) * n[1]
+        g = sw * (0.2 if j == 0 else 0.1); sh = sw * (0.35 if j == 0 else 0.15)
+        M = np.float32([[1, 0, -d[0] * sh], [0, 1, -d[1] * sh]])
+        moved = cv2.warpAffine(out, M, (w, h))
+        out = np.where(side < 0, moved, out); out[np.abs(side) < g] = 0
+    return out
+
+
+def _speed(m, sw, rng):
+    """左にのびるスピード線"""
+    out = m.copy(); h, w = m.shape; s = int(sw * 0.2) + 1
+    left = (m > 128) & (np.roll(m, s, axis=1) < 128)
+    ys, xs = np.nonzero(left); step = int(sw * 0.45); last = -10 ** 9
+    for i in np.argsort(ys):
+        x, y = xs[i], ys[i]
+        if y - last < step or rng.random() < 0.3: continue
+        last = y; th = sw * rng.uniform(0.08, 0.2); ln = sw * rng.uniform(1.5, 5)
+        cv2.fillPoly(out, [np.array([(x + sw * .3, y - th), (x - ln, y), (x + sw * .3, y + th)], np.int32)], 255, cv2.LINE_AA)
+    return out
+
+
 def shape(mask, kind, seed=7):
     """白の型（uint8）に飾りを足す。kind は thorn / blade / flame / drip / crack / plain"""
     rng = np.random.default_rng(seed); m = (mask > 128).astype(np.uint8) * 255
-    sw, sk, _ = _sw(m)
+    sw, sk, _ = _sw(m); pd = int(sw * 6); m = cv2.copyMakeBorder(m, pd, pd, pd, pd, cv2.BORDER_CONSTANT, 0)
+    sk = cv2.ximgproc.thinning(m)
     for k in kind.split('+'):
-        if k == 'thorn': m = _thorn(m, sw, sk, rng)
+        if k == 'skew': m = _skew(m, sw)
+        elif k == 'angular': m = _angular(m, sw)
+        elif k == 'slash': m = _slash(m, sw, rng)
+        elif k == 'speed': m = _speed(m, sw, rng)
+        elif k == 'thorn': m = _thorn(m, sw, sk, rng)
         elif k == 'blade': m = _thorn(m, sw, sk, rng, 1.9, 0.18)
         elif k == 'flame': m = _flame(m, sw, rng)
         elif k == 'drip': m = _drip(m, sw, rng)
@@ -147,7 +210,7 @@ def _dil(a, r):
     r = max(1, int(r)); return cv2.dilate(a, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1)))
 
 
-def paint(m, sw, pal, neon=False, glitch=False, seed=7):
+def paint(m, sw, pal, neon=False, glitch=False, seed=7, extrude=False):
     """型を塗って BGRA（uint8）にする"""
     P = PALETTES[pal] if isinstance(pal, str) else pal; pad = int(sw * 2.5)
     m = cv2.copyMakeBorder(m, pad, pad, pad, pad, cv2.BORDER_CONSTANT, 0)
@@ -164,6 +227,11 @@ def paint(m, sw, pal, neon=False, glitch=False, seed=7):
         _over(out, col(P['o1']), np.clip(cv2.GaussianBlur(cv2.erode(ring, np.ones((3, 3))), (0, 0), sw * .04) * 1.2, 0, 1) * .95)
     else:
         _over(out, col(P['glow']), np.clip(cv2.GaussianBlur(_dil(a, sw * .3), (0, 0), sw * .7) * .85, 0, 1))
+        if extrude:  # 立体（右下に厚み）
+            e = _dil(a, sw * .3); acc = np.zeros_like(e); n = int(sw * .7)
+            for i in range(1, n + 1): acc = np.maximum(acc, np.roll(np.roll(e, i, 0), int(i * .55), 1))
+            _over(out, col(P.get('ext', P['o1'])), acc)
+            _over(out, col(P['o1']), np.clip(acc - np.roll(np.roll(acc, -2, 0), -1, 1), 0, 1) * .8)
         _over(out, col(P['o2']), _dil(a, sw * .3))
         _over(out, col(P['o1']), _dil(a, sw * .18))
         _over(out, _grad(h, w, y0, y1, P['fill']), a)
