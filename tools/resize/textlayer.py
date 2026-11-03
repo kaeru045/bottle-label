@@ -31,8 +31,10 @@ FONTS = {'pirata': 'pirata-one', 'vibes': 'great-vibes', 'bangers': 'bangers', '
          'hachimaru': 'hachi-maru-pop', 'dela': 'dela-gothic-one',
          # 高級感（2026-11-02 追加）
          'cormorant': 'cormorant-garamond', 'bodoni': 'bodoni-moda', 'cinzelr': 'cinzel', 'allura': 'allura', 'parisienne': 'parisienne',
-         'italiana': 'italiana', 'marcellus': 'marcellus', 'shippori': 'shippori-mincho', 'oldmincho': 'zen-old-mincho', 'kaisei': 'kaisei-decol'}
-JPFONTS = {'mochiy', 'zenantique', 'yuji', 'zenmaru', 'hachimaru', 'dela', 'shippori', 'oldmincho', 'kaisei'}
+         'italiana': 'italiana', 'marcellus': 'marcellus', 'shippori': 'shippori-mincho', 'oldmincho': 'zen-old-mincho', 'kaisei': 'kaisei-decol',
+         # ヴィジュアル系・ホストの名前ロゴ風（2026-11-04 追加）
+         'chokoku': 'chokokutai', 'reggae': 'reggae-one'}
+JPFONTS = {'mochiy', 'zenantique', 'yuji', 'zenmaru', 'hachimaru', 'dela', 'shippori', 'oldmincho', 'kaisei', 'chokoku', 'reggae'}
 # 小文字が無く、全部大文字に見えてしまう書体。依頼の文字は変えないので、小文字を含む文言には使わない
 CAPSFONTS = {'bangers', 'cinzel', 'luckiest', 'marker', 'cinzelr'}
 
@@ -106,6 +108,23 @@ STYLES = {
     'jrose': dict(jp='ローズの明朝', mood='日本語・高級・ピンク・女性・上品', font='kaisei', weight=700,
                   fill=G('#fff3f0', '#f0b3a5 50%', '#b06a5a'), stroke='#ffffff', strokew=0.05,
                   shadow=SH('0 .03em 0 rgba(120,50,40,.8)', '0 .08em .18em rgba(0,0,0,.45)'), spacing='0.05em', line=1.15),
+    # 名前ロゴ風（2026-11-04 追加）：1行目＝日本語の名前をとがった書体でメタリック、2行目以降＝ローマ字を太い斜体で小さく。
+    # 例 --text '如月サク|Saku Kisaragi'。sub は2行目以降の書体（1行だけなら使われない）
+    'vkei': dict(jp='ヴィジュアル系ネーム', mood='日本語の名前＋ローマ字・ホスト・ヴィジュアル系・夜桜・紫やピンクの暗い背景', font='reggae', weight=400,
+                 fill=G('#ffffff 0%', '#fde6fb 28%', '#f3a6ea 50%', '#ffffff 68%', '#d98ae0 84%', '#b45bbd 100%'), stroke='#2b0b36', strokew=0.055,
+                 shadow=SH('0 0 .03em rgba(255,170,245,.9)', '0 0 .1em rgba(200,60,220,.55)', '0 .05em .08em rgba(0,0,0,.8)'),
+                 tshadow='0 .02em 0 #4a1458, 0 .04em 0 #2b0b36', spacing='0.02em', line=1.0,
+                 sub=dict(font='playfair', weight=800, italic=True, scale=0.36, fill=G('#ffffff', '#fff2fd'), stroke='#b0389f', strokew=0.09, spacing='0.01em')),
+    'vkeiblue': dict(jp='ヴィジュアル系ネーム（青銀）', mood='日本語の名前＋ローマ字・ホスト・クール・青や黒の背景', font='chokoku', weight=400,
+                     fill=G('#ffffff 0%', '#e6f1ff 28%', '#9fc4f3 50%', '#ffffff 68%', '#8fb0dd 84%', '#4f6fa8 100%'), stroke='#0b1636', strokew=0.055,
+                     shadow=SH('0 0 .05em rgba(150,200,255,.95)', '0 0 .22em rgba(70,120,230,.75)', '0 .06em .12em rgba(0,0,0,.75)'),
+                     tshadow='0 .02em 0 #14285a, 0 .04em 0 #0b1636', spacing='0.02em', line=1.0,
+                     sub=dict(font='playfair', weight=800, italic=True, scale=0.36, fill=G('#ffffff', '#eef5ff'), stroke='#2f5fae', strokew=0.09, spacing='0.01em')),
+    'vkeigold': dict(jp='ヴィジュアル系ネーム（金）', mood='日本語の名前＋ローマ字・ホスト・高級・黒や赤の背景', font='chokoku', weight=400,
+                     fill=G('#fffaf0 0%', '#f8e2a6 28%', '#d6a64a 50%', '#fff3cf 68%', '#c9963c 84%', '#8a5e15 100%'), stroke='#2a1505', strokew=0.055,
+                     shadow=SH('0 0 .05em rgba(255,220,150,.9)', '0 0 .22em rgba(230,160,60,.6)', '0 .06em .12em rgba(0,0,0,.75)'),
+                     tshadow='0 .02em 0 #5a3b0a, 0 .04em 0 #2a1505', spacing='0.02em', line=1.0,
+                     sub=dict(font='playfair', weight=800, italic=True, scale=0.36, fill=G('#ffffff', '#fff7e6'), stroke='#9a6a1c', strokew=0.09, spacing='0.01em')),
     # 日本語も書ける
     'jpop': dict(jp='和ポップ', mood='日本語・子ども・元気', font='mochiy', weight=400, fill=G('#ff7eb6', '#ff3d7f'), stroke='#ffffff', strokew=0.12,
                  shadow=SH('0 .05em 0 #c2185b', '0 .1em .2em rgba(0,0,0,.35)'), spacing='0.02em', line=1.1),
@@ -168,14 +187,14 @@ def _ranges(ur):
     return out
 
 
-def font_css(key, weight, text):
+def font_css(key, weight, text, family='F', italic=False):
     """文字に必要な分だけの @font-face（データを埋め込み）。英字だけの書体で使えない文字があれば止める"""
     name = FONTS[key]
     latin = os.path.join(FONTDIR, f'{name}-latin-{weight}-normal.woff2')
     chars = {ord(c) for c in text if not c.isspace() and c != '|'}
-    if all(c < 0x250 or 0x2000 <= c <= 0x206F for c in chars) and os.path.exists(latin):  # 英字だけならリポジトリの書体で足りる
-        return f"@font-face{{font-family:F;src:url(data:font/woff2;base64,{base64.b64encode(open(latin, 'rb').read()).decode()}) format('woff2');font-weight:{weight}}}"
-    d = _pkg(name); css = open(os.path.join(d, f'{weight}.css')).read()
+    if not italic and all(c < 0x250 or 0x2000 <= c <= 0x206F for c in chars) and os.path.exists(latin):  # 英字だけならリポジトリの書体で足りる
+        return f"@font-face{{font-family:{family};src:url(data:font/woff2;base64,{base64.b64encode(open(latin, 'rb').read()).decode()}) format('woff2');font-weight:{weight}}}"
+    d = _pkg(name); css = open(os.path.join(d, f'{weight}-italic.css' if italic else f'{weight}.css')).read()
     out, covered = [], set()
     for m in re.finditer(r'@font-face\s*{([^}]*)}', css):
         body = m.group(1); f = re.search(r"url\(\./files/([^)]+\.woff2)\)", body); u = re.search(r'unicode-range:\s*([^;]+);', body)
@@ -184,7 +203,7 @@ def font_css(key, weight, text):
         if not need: continue
         covered |= need
         data = base64.b64encode(open(os.path.join(d, 'files', f.group(1)), 'rb').read()).decode()
-        out.append(f"@font-face{{font-family:F;src:url(data:font/woff2;base64,{data}) format('woff2');font-weight:{weight};unicode-range:{u.group(1)}}}")
+        out.append(f"@font-face{{font-family:{family};src:url(data:font/woff2;base64,{data}) format('woff2');font-weight:{weight};font-style:{'italic' if italic else 'normal'};unicode-range:{u.group(1)}}}")
     miss = chars - covered
     if miss: raise SystemExit(f'書体「{STYLES_BY_FONT.get(key, key)}」では書けない文字があります：' + ''.join(sorted(chr(c) for c in miss)) + '（日本語は jpop / fude / wamodern / maru / kawaii / gokubuto / jgold / jplatinum / jrose）')
     return ''.join(out)
@@ -198,13 +217,18 @@ def has_jp(text):
 
 
 async def render(text, st, width, rotate, c1, c2):
-    ffcss = font_css(st['font'], st['weight'], text)
+    sub = st.get('sub') if '|' in text else None
+    parts = text.split('|')
+    ffcss = font_css(st['font'], st['weight'], parts[0] if sub else text)
+    if sub: ffcss += font_css(sub['font'], sub['weight'], '|'.join(parts[1:]), 'F2', sub.get('italic', False))
     fill = st['fill'] if not c1 else f'linear-gradient(180deg,{c1},{c2 or c1})'
     import html as _h
     # 1行＝縁取りの層（下）と色の層（上）を同じ位置に重ねる
     # 立体の重ねた影（tshadow）は filter だと重いので、下の層の text-shadow で描く
-    lines = ''.join(f'<div class="l">' + (f'<span class="s">{_h.escape(l)}</span>' if st['strokew'] or st.get('tshadow') else '') + f'<span class="f">{_h.escape(l)}</span></div>'
-                    for l in text.split('|'))
+    lines = ''.join(f'<div class="l{" sb" if sub and i else ""}">' + (f'<span class="s">{_h.escape(l)}</span>' if st['strokew'] or st.get('tshadow') or (sub and i) else '') + f'<span class="f">{_h.escape(l)}</span></div>'
+                    for i, l in enumerate(text.split('|')))
+    subcss = (f".sb{{font-family:F2;font-weight:{sub['weight']};font-style:{'italic' if sub.get('italic') else 'normal'};font-size:{sub['scale']}em;letter-spacing:{sub.get('spacing', '0')};margin-top:-.05em}}"
+              f".sb .s{{color:{sub['stroke']};-webkit-text-stroke:{sub['strokew'] * 2}em {sub['stroke']};text-shadow:none}} .sb .f{{background:{sub['fill']};-webkit-background-clip:text;background-clip:text;color:transparent}}") if sub else ''
     html = f"""<html><head><style>
     {ffcss}
     html,body{{margin:0;background:transparent}}
@@ -213,6 +237,7 @@ async def render(text, st, width, rotate, c1, c2):
     .l{{display:grid;justify-items:center}} .l>span{{grid-area:1/1;padding:.35em .5em;margin:-.35em -.5em}}
     .s{{color:{st['stroke'] or 'transparent'};-webkit-text-stroke:{st['strokew'] * 2}em {st['stroke'] or 'transparent'};text-shadow:{st.get('tshadow') or 'none'}}}
     .f{{background:{fill};-webkit-background-clip:text;background-clip:text;color:transparent}}
+    {subcss}
     </style></head><body><div id="w"><div class="t">{lines}</div></div></body></html>"""
     async with async_playwright() as p:
         b = await p.chromium.launch(); pg = await b.new_page(viewport={'width': 4000, 'height': 3000})
