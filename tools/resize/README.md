@@ -71,3 +71,8 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 - 効果：どの飾り方にも `--effect shadow|glow|emboss|3d|neon|outline`（「shadow+glow」のように重ねる）、または `--style 'luxury:3d'` の形で足せる（textopts の `--styles` も同じ書き方。管理サイトでは「ラグジュアリー・立体」のように表示）。
   - shadow 影／glow 光／emboss 浮き彫り／3d 立体／neon ネオン／outline 縁取り
 - 裏の文字にも高級感の書体（shippori しっぽり明朝・oldmincho Zen Old Mincho・kaisei Kaisei Decol・cormorant・bodoni・cinzelr（大文字だけ）・allura・parisienne・italiana・marcellus）と効果（backOpt の effect：shadow／glow／emboss／3d、「shadow+glow」で重ねる）を足した。提出用ツールのステップ2「裏の文字」にも「効果」がある。
+
+## オリジナルの飾り文字（deco.py、2026-11-04）
+名前ロゴ風。1行目（名前・日本語可）の字にとげ・刃・炎・したたり・ひび・ネオン管・グリッチを足して塗り、2行目以降（ローマ字など）は小さく下に重ねる。字の形・綴り・大文字小文字は書体のまま変えない。
+`python3 textlayer.py DESIGN.jpg OUT.jpg --text '如月サク|Saku Kisaragi' --style thornpink`
+種類：thornpink/silver/gold/purple/holo・thorncrack・bladeice/red/gold・emeraldblade・flamefire/purple/blue・dripblood/gold/sakura・crackchrome/gold・neonpink2/neonblue2・glitchholo/glitchthorn（`--list` に合う背景）。--color1/--color2 で塗りの色を上書き。

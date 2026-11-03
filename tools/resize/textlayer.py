@@ -140,6 +140,38 @@ STYLES = {
                      shadow=SH('.05em .06em 0 #7a0a0c', '0 .1em .2em rgba(0,0,0,.45)'), spacing='0.02em', line=1.1),
 }
 
+# オリジナルの飾り文字（2026-11-04 ユーザー指定「こうゆうオリジナルの書体沢山増やして」）。deco.py で1行目の字にとげ・刃・炎・したたり・ひび・ネオン・グリッチを足して塗る。
+# 1行目＝名前（日本語も可）、2行目以降＝ローマ字など（sub の書体で小さく）。例 --text '如月サク|Saku Kisaragi'
+_SUBI = lambda c: dict(font='playfair', weight=800, italic=True, fill=G('#ffffff', '#f4f4f4'), stroke=c, strokew=0.09, spacing='0.01em', wr=0.78)
+_SUBC = lambda c: dict(font='cormorant', weight=700, fill=G('#ffffff', '#f2f2f2'), stroke=c, strokew=0.08, spacing='0.06em', wr=0.8)  # 小文字のある書体（文言の大文字小文字を変えない）
+_SUBS = lambda c: dict(font='vibes', weight=400, fill=G('#ffffff', '#fff6fb'), stroke=c, strokew=0.06, spacing='0', wr=0.7)
+_D = lambda jp, mood, font, deco, pal, sub, weight=400, **k: dict(jp=jp, mood=mood, font=font, weight=weight, deco=deco, pal=pal, sub=sub,
+                                                               fill='', stroke='', strokew=0, shadow='', spacing='0.02em', line=1.0, **k)
+STYLES.update({
+    'thornpink': _D('とげ（ピンク）', '名前ロゴ・ヴィジュアル系・ホスト・夜桜・ピンクや紫の暗い背景', 'reggae', 'thorn', 'pink', _SUBI('#b0389f')),
+    'thornsilver': _D('とげ（銀）', '名前ロゴ・ホスト・クール・黒や青の背景', 'chokoku', 'thorn', 'chrome', _SUBI('#3a4a66')),
+    'thorngold': _D('とげ（金）', '名前ロゴ・ホスト・高級・黒や赤の背景', 'dela', 'thorn', 'gold', _SUBC('#7a500f')),
+    'thornpurple': _D('とげ（紫）', '名前ロゴ・ヴィジュアル系・ダーク・紫の背景', 'reggae', 'thorn', 'purple', _SUBI('#5a22b0')),
+    'thornholo': _D('とげ（オーロラ）', '名前ロゴ・地雷系・パステル・ゆめかわ', 'chokoku', 'thorn', 'holo', _SUBS('#7a4ac0')),
+    'bladeice': _D('刃（氷）', '名前ロゴ・クール・青や白の背景・冬', 'oldmincho', 'blade', 'ice', _SUBC('#1f5a8f'), weight=900),
+    'bladered': _D('刃（紅）', '名前ロゴ・和・侍・赤や黒の背景', 'shippori', 'blade', 'blood', _SUBC('#7a0a0a'), weight=800),
+    'bladegold': _D('刃（黒金）', '名前ロゴ・高級・黒背景・周年', 'shippori', 'blade', 'blackgold', _SUBC('#8a5e15'), weight=800),
+    'flamefire': _D('炎', '名前ロゴ・熱い・赤やオレンジ・祭り・スポーツ', 'dela', 'flame', 'fire', _SUBI('#a83000')),
+    'flamepurple': _D('炎（紫）', '名前ロゴ・ダーク・紫や黒の背景', 'reggae', 'flame', 'purple', _SUBI('#5a22b0')),
+    'flameblue': _D('炎（青）', '名前ロゴ・クール・青や黒の背景', 'chokoku', 'flame', 'ice', _SUBI('#1f5a8f')),
+    'dripblood': _D('したたり（赤）', '名前ロゴ・ホラー・ハロウィン・黒や赤の背景', 'dela', 'drip', 'blood', _SUBI('#7a0a0a')),
+    'dripgold': _D('したたり（金）', '名前ロゴ・とろける金・高級・黒背景', 'zenantique', 'drip', 'gold', _SUBC('#7a500f')),
+    'dripsakura': _D('したたり（ピンク）', '名前ロゴ・地雷系・かわいい・ピンクの背景', 'mochiy', 'drip', 'sakura', _SUBS('#c2185b')),
+    'crackchrome': _D('ひび割れ（銀）', '名前ロゴ・ロック・メタル・灰色や黒の背景', 'reggae', 'crack', 'chrome', _SUBC('#3a4a66')),
+    'crackgold': _D('ひび割れ（金）', '名前ロゴ・ワイルド・黒や茶の背景', 'zenantique', 'crack', 'gold', _SUBC('#7a500f')),
+    'thorncrack': _D('とげ＋ひび（紅）', '名前ロゴ・ヴィジュアル系・ダーク・黒や赤の背景', 'reggae', 'thorn+crack', 'blood', _SUBI('#7a0a0a')),
+    'neonpink2': _D('ネオン管（ピンク）', '名前ロゴ・夜・ネオン街・暗い背景', 'mochiy', 'plain', 'neonpink', _SUBS('#ff2ec4'), neon=True),
+    'neonblue2': _D('ネオン管（青）', '名前ロゴ・夜・クラブ・暗い背景', 'zenmaru', 'plain', 'neonblue', _SUBI('#00b3ff'), weight=700, neon=True),
+    'glitchholo': _D('グリッチ', '名前ロゴ・ゲーム・配信・サイバー・暗い背景', 'dela', 'plain', 'holo', _SUBI('#7a4ac0'), glitch=True),
+    'glitchthorn': _D('グリッチ＋とげ', '名前ロゴ・サイバー・ヴィジュアル系・暗い背景', 'chokoku', 'thorn', 'neonblue', _SUBI('#00b3ff'), glitch=True),
+    'emeraldblade': _D('刃（エメラルド）', '名前ロゴ・緑の背景・誕生石', 'kaisei', 'blade', 'emerald', _SUBC('#0b6b44'), weight=700),
+})
+
 
 # 足せる効果（2026-11-02 ユーザー指定）。--effect shadow,glow など、または --style 'luxury:shadow+glow'
 EFFECTS = {
@@ -219,7 +251,7 @@ def has_jp(text):
 async def render(text, st, width, rotate, c1, c2):
     sub = st.get('sub') if '|' in text else None
     parts = text.split('|')
-    ffcss = font_css(st['font'], st['weight'], parts[0] if sub else text)
+    ffcss = font_css(st['font'], st['weight'], parts[0] if sub else text, 'F', st.get('italic', False))
     if sub: ffcss += font_css(sub['font'], sub['weight'], '|'.join(parts[1:]), 'F2', sub.get('italic', False))
     fill = st['fill'] if not c1 else f'linear-gradient(180deg,{c1},{c2 or c1})'
     import html as _h
@@ -233,7 +265,7 @@ async def render(text, st, width, rotate, c1, c2):
     {ffcss}
     html,body{{margin:0;background:transparent}}
     #w{{position:absolute;left:0;top:0;display:inline-block;padding:.35em .45em;transform-origin:center}}
-    .t{{font-family:F;font-weight:{st['weight']};font-size:200px;line-height:{st['line']};letter-spacing:{st['spacing']};text-align:center;white-space:nowrap;filter:{st['shadow']}}}
+    .t{{font-family:F;font-weight:{st['weight']};font-style:{'italic' if st.get('italic') else 'normal'};font-size:200px;line-height:{st['line']};letter-spacing:{st['spacing']};text-align:center;white-space:nowrap;filter:{st['shadow']}}}
     .l{{display:grid;justify-items:center}} .l>span{{grid-area:1/1;padding:.35em .5em;margin:-.35em -.5em}}
     .s{{color:{st['stroke'] or 'transparent'};-webkit-text-stroke:{st['strokew'] * 2}em {st['stroke'] or 'transparent'};text-shadow:{st.get('tshadow') or 'none'}}}
     .f{{background:{fill};-webkit-background-clip:text;background-clip:text;color:transparent}}
@@ -252,6 +284,30 @@ async def render(text, st, width, rotate, c1, c2):
         png = await pg.screenshot(timeout=180000, omit_background=True, clip={'x': 0, 'y': 0, 'width': r[2] + 2 * pad, 'height': r[3] + 2 * pad})
         await b.close()
     return cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_UNCHANGED)
+
+
+def render_deco(text, st, width, rotate, c1, c2):
+    """オリジナルの飾り文字（deco.py）。1行目を飾り、2行目以降は sub の書体で下に重ねる"""
+    import deco
+    parts = text.split('|')
+    mst = dict(font=st['font'], weight=st['weight'], fill=G('#ffffff', '#ffffff'), stroke='', strokew=0, shadow='none', spacing=st['spacing'], line=1.0)
+    t = asyncio.run(render(parts[0], mst, width * 0.86, 0, '', ''))
+    m, sw = deco.shape(t[..., 3], st['deco'], st.get('seed', 7))
+    pal = dict(deco.PALETTES[st['pal']], **({'fill': [c1, c2 or c1]} if c1 else {}))
+    main = deco.paint(m, sw, pal, st.get('neon', False), st.get('glitch', False))
+    sub = None
+    if len(parts) > 1:
+        sb = st['sub']; mw = np.nonzero(main[..., 3].max(0) > 8)[0]; mw = mw.max() - mw.min()
+        sst = dict(font=sb['font'], weight=sb['weight'], italic=sb.get('italic', False), fill=sb['fill'], stroke=sb['stroke'], strokew=sb['strokew'],
+                   shadow=sb.get('shadow', SH('0 0 .05em ' + sb['stroke'], '0 .05em .08em rgba(0,0,0,.75)')), spacing=sb['spacing'], line=1.0)
+        sub = asyncio.run(render('|'.join(parts[1:]), sst, mw * sb.get('wr', 0.75), 0, '', ''))
+    out = deco.stack(main, sub, int(sw * 0.05))
+    if rotate:
+        h, w = out.shape[:2]; M = cv2.getRotationMatrix2D((w / 2, h / 2), -rotate, 1)
+        c, s_ = abs(M[0, 0]), abs(M[0, 1]); nw, nh = int(h * s_ + w * c), int(h * c + w * s_)
+        M[0, 2] += nw / 2 - w / 2; M[1, 2] += nh / 2 - h / 2
+        out = cv2.warpAffine(out, M, (nw, nh), flags=cv2.INTER_CUBIC)
+    return out
 
 
 def _box(design, placement):
@@ -291,9 +347,10 @@ def apply(design, out_path, text, style, cx=None, cy=None, width=1800, rotate=0,
     if changes_case(style, text): raise SystemExit(f'「{STYLES[style]["jp"]}」は全部大文字に見える書体なので、小文字を含む「{text}」には使えません（文字は依頼のまま変えない）')
     im = cv2.imread(design); assert im is not None and im.shape[1] == W, 'デザイン画像は 2880×2048'
     st = with_effect(STYLES[style], effect)
-    t = asyncio.run(render(text, st, width, rotate, color1, color2))
+    isdeco = 'deco' in st
+    t = render_deco(text, st, width, rotate, color1, color2) if isdeco else asyncio.run(render(text, st, width, rotate, color1, color2))
     th, tw = t.shape[:2]
-    for _ in range(2):  # 背景に埋もれないように：文字と下の背景の明るさが近ければ、縁に影（または光）を足して描き直す
+    for _ in range(0 if isdeco else 2):  # 背景に埋もれないように：文字と下の背景の明るさが近ければ、縁に影（または光）を足して描き直す
         x0, y0 = _place(t, design, placement, cx, cy)
         c = _contrast(im, t, x0, y0)
         if c is None or abs(c[0] - c[1]) >= 100: break
