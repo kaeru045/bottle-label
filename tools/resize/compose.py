@@ -8,7 +8,7 @@
 --back（Asanaの「裏：〇〇」の文字。一字も変えない。「|」で改行）があると、提出用の裏（ロゴの位置）に文字を入れ、
 --back-opt '{"dir":"v|h|r|auto","font":"<書体キー>","color1":"#..","color2":"#..","stroke":"#.."}'（省略可。色を省くとデザインの色から自動、書体キーは提出用ツールの BACKFONTS）。
 同じ文字が入ったデザイン画像を DIR/design_back.jpg に書く（register.py はこれがあれば design.jpg の代わりに送る）。
---tag-adj '{"x":0,"y":0,"z":50}' … タグ内の画像の位置（提出用ツールの「タグ内の画像の位置」と同じ：x 左右・y 上下 -50〜50〈＋で右・上〉、z 大きさ% 10〜150〈50＝枠をちょうど覆う〉）。
+--tag-adj '{"x":0,"y":0,"z":50,"r":270}' … タグ内の画像の位置（提出用ツールの「タグ内の画像の位置」と同じ：x 左右・y 上下 -50〜50〈＋で右・上〉、z 大きさ% 10〜150〈50＝枠をちょうど覆う〉、r 回転 0／90／180／270〈「タグ画像は横で」＝横長のデザインを横向きのまま入れる→270〉）。
   修正依頼「タグに人物が収まるように」などで使う。DIR/tag.png を見て人物（頭〜体）がタグの形に入るよう x・z を決める。
 """
 import argparse, asyncio, base64, json, os, sys
@@ -55,7 +55,9 @@ async def main():
             ok = await pg.evaluate("""t => { const k = (document.querySelector('input[name=tag]:checked') || {}).value, el = document.getElementById('tagAdj');
               if (!k || !el || el.hidden) return false;
               const set = (id, v) => { if (v === undefined) return; const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
-              set('tx', t.x); set('ty', t.y); set('tz', t.z); return true; }""", t)
+              set('tx', t.x); set('ty', t.y); set('tz', t.z);
+              const n = {0: 0, 270: 1, 180: 2, 90: 3}[((t.r || 0) % 360 + 360) % 360] || 0; // r：回転（90／270＝横向き）。ボタン1回で270°
+              for (let i = 0; i < n; i++) document.getElementById('tagRot').click(); return true; }""", t)
             if not ok:
                 sys.exit('--tag-adj：タグが選ばれていないか、位置を変えられないタグです')
             await pg.wait_for_timeout(1500)
