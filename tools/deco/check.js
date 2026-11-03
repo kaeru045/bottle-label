@@ -10,10 +10,11 @@ window.confirmedAsset = async decolinoUrl => {
   return imgs.length ? { asset: imgs[0].getAttribute('src').split('/').pop(), label: imgs[0].alt } : null;
 };
 // 店のロゴ（宝石箱など）を決まった位置に銀色で入れる。ロゴは管理サイト側に保存（公開ページには置かない）
-window.addLogo = async (canvas, key) => {
+// pos＝[左, 上, 幅]（画像に対する割合）。仕様の logoPos で案件ごとに位置・大きさを変えられる（名前と重なるときなど）
+window.addLogo = async (canvas, key, pos) => {
   const r = await siteApi({ action: 'logo', logo: key }); if (!r.ok) throw new Error('ロゴ取得失敗 ' + (r.error || r.status));
   const bm = await createImageBitmap(await (await fetch('data:image/png;base64,' + r.data)).blob());
-  const W = canvas.width, H = canvas.height, R = [0.4197, 0.8270, 0.5736, 0.9284];
+  const W = canvas.width, H = canvas.height, R = Array.isArray(pos) && pos.length >= 3 ? [pos[0], pos[1], pos[0] + pos[2]] : [0.4197, 0.8270, 0.5736, 0.9284];
   const lw = Math.round((R[2] - R[0]) * W), lh = Math.round(lw * bm.height / bm.width);
   const m = new OffscreenCanvas(lw, lh), mx = m.getContext('2d'); mx.drawImage(bm, 0, 0, lw, lh);
   const id = mx.getImageData(0, 0, lw, lh), p = id.data;
@@ -38,7 +39,7 @@ window.registerToSite = async function (o) {
   const shrink = async (blob, max) => { const bm = await createImageBitmap(blob); const k = Math.min(1, max / Math.max(bm.width, bm.height)); const c = new OffscreenCanvas(Math.round(bm.width * k), Math.round(bm.height * k)); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); return c.convertToBlob({ type: 'image/jpeg', quality: 0.82 }); };
   const raw = await fetch(o.assetPath).then(r => { if (!r.ok) throw new Error('画像取得失敗 ' + r.status); return r.blob(); });
   const bm = await createImageBitmap(raw); const c = new OffscreenCanvas(bm.width, bm.height); c.getContext('2d').drawImage(bm, 0, 0);
-  if (o.logo) await addLogo(c, o.logo);
+  if (o.logo) await addLogo(c, o.logo, o.logoPos);
   const design = await c.convertToBlob({ type: 'image/jpeg', quality: 0.95 });
   const html = window.__bl || (window.__bl = await fetch('https://kaeru045.github.io/bottle-label/').then(r => r.text()));
   const fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;left:-3000px;top:0;width:1400px;height:1000px'; document.body.appendChild(fr);
@@ -58,7 +59,7 @@ window.registerToSite = async function (o) {
     const tc = w.__buildTagCanvas && w.__buildTagCanvas(), tk = (d.querySelector('input[name=tag]:checked') || {}).value;
     const tagBlob = tc ? await new Promise(r => tc.toBlob(r, 'image/png')) : null;
     const body = JSON.stringify({ key: o.key, order: o.order, shop: o.shop, name: o.name, template: o.template, due: o.due, asana: o.asana, decolino: o.decolino, memo: o.memo || '',
-      asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', back: o.back || '', backOpt: o.backOpt || {} },
+      asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', logoPos: o.logoPos || null, back: o.back || '', backOpt: o.backOpt || {} },
       design: { name: o.fileBase + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
       designPreview: { name: o.fileBase + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
       tpl: await (async () => { try { const s = o.decolino && o.template && await tplFor(o.decolino, o.template); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
@@ -83,7 +84,7 @@ window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
     if (!sp) { res.push(tag + '：仕様が未登録のためスキップ'); continue; }
     if (dry || done >= max) { res.push(tag + '：更新あり（未反映）'); continue; }
     const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + c.asset, asset: c.asset, order: it.order, name: it.name,
-      shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', ...backOf(sp, it.id), confirmed: c.asset, note: 'Decolinoで確定した修正版',
+      shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', logoPos: sp.logoPos || null, ...backOf(sp, it.id), confirmed: c.asset, note: 'Decolinoで確定した修正版',
       fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
     res.push(tag + '：' + (r.ok ? 'v' + r.version + ' に更新' : '失敗 ' + (r.error || r.status))); done++;
   }
@@ -119,7 +120,7 @@ window.finishFix = async id => {
   if (!sp) { await siteApi({ action: 'fixState', id, state: 'エラー:仕様が未登録です' }); return '仕様なし'; }
   const cf = await confirmedAsset(it.decolino);
   const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + asset, asset, order: it.order, name: it.name,
-    shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', ...backOf(sp, id), confirmed: (cf && cf.asset) || 'none', fixDone: true,
+    shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', logoPos: sp.logoPos || null, ...backOf(sp, id), confirmed: (cf && cf.asset) || 'none', fixDone: true,
     note: '修正指示「' + it.fix + '」で作り直し（Decolinoは未確定）',
     fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
   if (!r.ok) await siteApi({ action: 'fixState', id, state: 'エラー:' + (r.error || r.status) });
