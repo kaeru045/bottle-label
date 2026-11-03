@@ -59,7 +59,7 @@ window.registerToSite = async function (o) {
     const tc = w.__buildTagCanvas && w.__buildTagCanvas(), tk = (d.querySelector('input[name=tag]:checked') || {}).value;
     const tagBlob = tc ? await new Promise(r => tc.toBlob(r, 'image/png')) : null;
     const body = JSON.stringify({ key: o.key, order: o.order, shop: o.shop, name: o.name, template: o.template, due: o.due, asana: o.asana, decolino: o.decolino, memo: o.memo || '',
-      asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', logoPos: o.logoPos || null, back: o.back || '', backOpt: o.backOpt || {} },
+      asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, force: !!o.force, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', logoPos: o.logoPos || null, back: o.back || '', backOpt: o.backOpt || {} },
       design: { name: o.fileBase + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
       designPreview: { name: o.fileBase + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
       tpl: await (async () => { try { const s = o.decolino && o.template && await tplFor(o.decolino, o.template); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
