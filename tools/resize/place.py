@@ -16,7 +16,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('src'); ap.add_argument('--box', required=True); ap.add_argument('--kind', choices=['head', 'content'], required=True)
 ap.add_argument('--pos', choices=['center', 'left', 'right'], default='center'); ap.add_argument('--out', required=True)
 ap.add_argument('--zoom', type=float, default=1.0, help='大きさの調整（1.15＝15%大きく）。修正依頼「人物をもっと大きく」など')
-ap.add_argument('--size', choices=['小さめ', '標準', '大きめ', '特大'], default='標準', help='管理サイトの「人物の大きさ」（zoom に掛ける：小さめ0.87・大きめ1.15・特大1.3）')
+ap.add_argument('--size', choices=['リメイク', '小さめ', '標準', '大きめ', '特大'], default='標準', help='管理サイトの「人物の大きさ」（zoom に掛ける：リメイク＝最初のリサイズの大きさ（頭360px）・小さめ0.87・大きめ1.15・特大1.3）')
 ap.add_argument('--dx', type=float, default=0, help='左右に動かす量（仕上がりのpx、＋で右）'); ap.add_argument('--dy', type=float, default=0, help='上下に動かす量（仕上がりのpx、＋で下）')
 a = ap.parse_args()
 
@@ -31,7 +31,9 @@ if bw <= 0 or bh <= 0:
 
 sw, sh = SAFE['x1'] - SAFE['x0'], SAFE['y1'] - SAFE['y0']
 HEAD_H = 605  # 仕上がりpxでの頭の高さ（標準）。2026-10-28 に 360 → 432、2026-10-29 に 432 → 605（さらに1.4倍、ユーザー指定）
-a.zoom *= {'小さめ': 0.87, '標準': 1.0, '大きめ': 1.15, '特大': 1.3}[a.size]
+# リメイク（店名）は人物を大きくしすぎない：一番最初のリサイズの大きさ（頭の高さ360px）。2026-11-03 ユーザー指定
+a.zoom *= {'リメイク': 360 / HEAD_H, '小さめ': 0.87, '標準': 1.0, '大きめ': 1.15, '特大': 1.3}[a.size]
+FLOOR = min(432, 360) if a.size == 'リメイク' else 432  # 顔のアップを丸ごと入れるときの下限（頭の高さ）
 if a.kind == 'head':
     s = HEAD_H * K / bh * a.zoom  # 頭の上端は 270 のまま、下に向かって大きくする
     a.zoom = 1.0
@@ -41,7 +43,7 @@ if a.kind == 'head':
     # 写真が丸ごと入る大きさまで小さくする（ただし前の標準 432px の大きさより小さくはしない）。2026-10-29 ディセントで発生
     fit = min(H / ih, W / iw) * a.zoom
     if s > fit:
-        s = max(fit, s * 432 / HEAD_H)
+        s = max(fit, HEAD_H * K / bh * FLOOR / HEAD_H) if a.size == 'リメイク' else max(fit, s * 432 / HEAD_H)
     y = 270 * K - y0 * s
     cx = {'center': W / 2, 'left': SAFE['x0'] + 66 * K + bw * s / 2, 'right': SAFE['x1'] - 66 * K - bw * s / 2}[a.pos]
 else:
