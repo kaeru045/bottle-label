@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>オリシャン完成デザイン管理</title>
+<style>body{margin:0;font:14px/1.6 "Hiragino Sans","Noto Sans JP",system-ui,sans-serif;background:#f4f2f7;color:#1d1a24}#m{padding:40px 16px;text-align:center;color:#6d6878}</style>
+</head>
+<body>
+<div id="m">読み込み中…</div>
+<script>
+// オリシャン完成デザイン管理（GitHub Pages版）。2026-11-04 ユーザー指定：
+// Googleに複数アカウントでログインしていると Apps Script のURLが開けないため、画面はここに置き、
+// 中身（index.html）とデータは管理サイト（Apps Script）の action:'ui' から取る。画面を直すときは Apps Script の index.html を直せばここにも反映される。
+const API = 'https://script.google.com/macros/s/AKfycbyy6oQ99y-JoFguIjmwnKz3wTrKfjtgjAPEpm5mT_u9NCBR2qrFGFBsXqEsMLW7uRcP/exec';
+const call = (fn, args) => fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'ui', fn, args: args || [] }) })
+  .then(r => r.json()).then(j => { if (!j.ok) throw new Error(j.error || 'エラー'); return j.v; });
+window.__orishanCall = call;
+call('page').then(h => {
+  const RUN = 'const run=(fn,...a)=>new Promise((ok,ng)=>google.script.run.withSuccessHandler(ok).withFailureHandler(ng)[fn](...a));';
+  if (h.indexOf(RUN) < 0) throw new Error('画面の形式が変わりました（run の定義が見つかりません）');
+  h = h.replace(RUN, 'const run=(fn,...a)=>window.__orishanCall(fn,a);')
+       .replace('<head>', '<head><meta name="viewport" content="width=device-width, initial-scale=1"><title>オリシャン完成デザイン管理</title>');
+  document.open(); document.write(h); document.close();
+}).catch(e => { document.getElementById('m').textContent = '読み込めませんでした：' + e.message + '（再読み込みしてください）'; });
+</script>
+</body>
+</html>
