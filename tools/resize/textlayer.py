@@ -33,8 +33,11 @@ FONTS = {'pirata': 'pirata-one', 'vibes': 'great-vibes', 'bangers': 'bangers', '
          'cormorant': 'cormorant-garamond', 'bodoni': 'bodoni-moda', 'cinzelr': 'cinzel', 'allura': 'allura', 'parisienne': 'parisienne',
          'italiana': 'italiana', 'marcellus': 'marcellus', 'shippori': 'shippori-mincho', 'oldmincho': 'zen-old-mincho', 'kaisei': 'kaisei-decol',
          # ヴィジュアル系・ホストの名前ロゴ風（2026-11-04 追加）
-         'chokoku': 'chokokutai', 'reggae': 'reggae-one'}
-JPFONTS = {'mochiy', 'zenantique', 'yuji', 'zenmaru', 'hachimaru', 'dela', 'shippori', 'oldmincho', 'kaisei', 'chokoku', 'reggae'}
+         'chokoku': 'chokokutai', 'reggae': 'reggae-one',
+         # クール系（2026-11-04 追加）
+         'murecho': 'murecho', 'zenkaku': 'zen-kaku-gothic-new', 'dotgothic': 'dotgothic16', 'rocknroll': 'rocknroll-one',
+         'michroma': 'michroma', 'orbitron': 'orbitron', 'rajdhani': 'rajdhani'}
+JPFONTS = {'mochiy', 'zenantique', 'yuji', 'zenmaru', 'hachimaru', 'dela', 'shippori', 'oldmincho', 'kaisei', 'chokoku', 'reggae', 'murecho', 'zenkaku', 'dotgothic', 'rocknroll'}
 # 小文字が無く、全部大文字に見えてしまう書体。依頼の文字は変えないので、小文字を含む文言には使わない
 CAPSFONTS = {'bangers', 'cinzel', 'luckiest', 'marker', 'cinzelr'}
 
@@ -145,8 +148,8 @@ STYLES = {
 _SUBI = lambda c: dict(font='playfair', weight=800, italic=True, fill=G('#ffffff', '#f4f4f4'), stroke=c, strokew=0.09, spacing='0.01em', wr=0.78)
 _SUBC = lambda c: dict(font='cormorant', weight=700, fill=G('#ffffff', '#f2f2f2'), stroke=c, strokew=0.08, spacing='0.06em', wr=0.8)  # 小文字のある書体（文言の大文字小文字を変えない）
 _SUBS = lambda c: dict(font='vibes', weight=400, fill=G('#ffffff', '#fff6fb'), stroke=c, strokew=0.06, spacing='0', wr=0.7)
-_D = lambda jp, mood, font, deco, pal, sub, weight=400, **k: dict(jp=jp, mood=mood, font=font, weight=weight, deco=deco, pal=pal, sub=sub,
-                                                               fill='', stroke='', strokew=0, shadow='', spacing='0.02em', line=1.0, **k)
+_D = lambda jp, mood, font, deco, pal, sub, weight=400, spacing='0.02em', **k: dict(jp=jp, mood=mood, font=font, weight=weight, deco=deco, pal=pal, sub=sub,
+                                                               fill='', stroke='', strokew=0, shadow='', spacing=spacing, line=1.0, **k)
 STYLES.update({
     'thornpink': _D('とげ（ピンク）', '名前ロゴ・ヴィジュアル系・ホスト・夜桜・ピンクや紫の暗い背景', 'reggae', 'thorn', 'pink', _SUBI('#b0389f')),
     'thornsilver': _D('とげ（銀）', '名前ロゴ・ホスト・クール・黒や青の背景', 'chokoku', 'thorn', 'chrome', _SUBI('#3a4a66')),
@@ -190,6 +193,27 @@ STYLES.update({
     'thunder': _D('雷（とげ＋グリッチ）', 'かっこいい・ゲーム・サイバー・青や黒の背景', 'chokoku', 'skew+thorn', 'electric', _SUBI('#1f5a8f'), glitch=True),
 })
 
+
+# クール系（2026-11-04 ユーザー指定「可愛い系に寄っちゃってるのでクールな文字も追加して」）：光らせない・色数少なめ・細い縁と落ち影・字間広め
+_SUBW = lambda c='#0b0d10', f='michroma', w=400: dict(font=f, weight=w, fill=G('#ffffff', '#e9ecef'), stroke=c, strokew=0.05, spacing='0.28em', wr=0.7,
+                                                      shadow=SH('0 .05em .08em rgba(0,0,0,.85)'))
+_K = lambda *a, **k: _D(*a, cool=True, **k)
+STYLES.update({
+    'coolsilver': _K('クール（銀）', 'クール・大人・モノトーン・ホスト・何にでも', 'murecho', 'plain', 'mono', _SUBW(), weight=900, spacing='0.08em'),
+    'coolline': _K('クール（銀＋線）', 'クール・シンプル・高級・暗い背景', 'zenkaku', 'lines', 'mono', _SUBW(), weight=900, spacing='0.12em'),
+    'coolblack': _K('クール（黒×白縁）', 'クール・明るい背景・白や灰色・シンプル', 'zenkaku', 'plain', 'matteblack', _SUBW('#ffffff'), weight=900, spacing='0.08em'),
+    'coolice': _K('クール（氷）', 'クール・青や白の背景・冬・静か', 'oldmincho', 'lines', 'icecool', _SUBW('#0a1622', 'cormorant', 700), weight=900, spacing='0.1em'),
+    'coolmincho': _K('クール明朝', 'クール・和・大人・黒や紺の背景', 'shippori', 'plain', 'mono', _SUBW('#0b0d10', 'cormorant', 700), weight=800, spacing='0.12em'),
+    'coolhollow': _K('クール（白抜き線）', 'クール・シンプル・写真を見せたいとき・暗い背景', 'murecho', 'plain', 'mono', _SUBW(), weight=900, spacing='0.1em', hollow=True),
+    'coolred': _K('クール（黒×赤）', 'クール・ダーク・黒や赤の背景・ロック', 'murecho', 'lines', 'blackred', _SUBW('#d0101c', 'rajdhani', 700), weight=900, spacing='0.08em'),
+    'coolgold': _K('クール（金・つや消し）', 'クール・高級・紺や黒の背景・周年', 'shippori', 'lines', 'navygold', _SUBW('#0b1226', 'cormorant', 700), weight=800, spacing='0.12em'),
+    'coolsplit': _K('クール（クローム）', 'クール・メタル・車・暗い背景', 'zenkaku', 'skew', 'split', _SUBW('#05070a', 'orbitron', 700), weight=900, spacing='0.06em'),
+    'coolsteel': _K('クール（鋼の斬り）', 'クール・侍・鋭い・暗い背景', 'murecho', 'angular+slash', 'steel', _SUBW('#07090c', 'rajdhani', 700), weight=900, spacing='0.06em'),
+    'cool3d': _K('クール（立体）', 'クール・インパクト・スポーツ・暗めの背景', 'rocknroll', 'plain', 'mono', _SUBW('#0b0d10', 'orbitron', 700), extrude=True),
+    'cyber': _K('サイバー（ドット）', 'クール・ゲーム・配信・デジタル・暗い背景', 'dotgothic', 'lines', 'icecool', _SUBW('#0a1622', 'orbitron', 700), spacing='0.12em'),
+    'coolglitch': _K('クール（グリッチ）', 'クール・サイバー・モノトーン・暗い背景', 'murecho', 'plain', 'mono', _SUBW('#0b0d10', 'orbitron', 700), weight=900, spacing='0.08em', glitch=True),
+    'coolnavy': _K('クール（紺×銀）', 'クール・紺や青の背景・スーツ・大人', 'zenkaku', 'lines', 'icecool', _SUBW('#0a1622', 'rajdhani', 700), weight=900, spacing='0.1em'),
+})
 
 # 足せる効果（2026-11-02 ユーザー指定）。--effect shadow,glow など、または --style 'luxury:shadow+glow'
 EFFECTS = {
@@ -312,14 +336,14 @@ def render_deco(text, st, width, rotate, c1, c2):
     t = asyncio.run(render(parts[0], mst, width * 0.86, 0, '', ''))
     m, sw = deco.shape(t[..., 3], st['deco'], st.get('seed', 7))
     pal = dict(deco.PALETTES[st['pal']], **({'fill': [c1, c2 or c1]} if c1 else {}))
-    main = deco.paint(m, sw, pal, st.get('neon', False), st.get('glitch', False), extrude=st.get('extrude', False))
+    main = deco.paint(m, sw, pal, st.get('neon', False), st.get('glitch', False), extrude=st.get('extrude', False), cool=st.get('cool', False), hollow=st.get('hollow', False))
     sub = None
     if len(parts) > 1:
         sb = st['sub']; mw = np.nonzero(main[..., 3].max(0) > 8)[0]; mw = mw.max() - mw.min()
         sst = dict(font=sb['font'], weight=sb['weight'], italic=sb.get('italic', False), fill=sb['fill'], stroke=sb['stroke'], strokew=sb['strokew'],
                    shadow=sb.get('shadow', SH('0 0 .05em ' + sb['stroke'], '0 .05em .08em rgba(0,0,0,.75)')), spacing=sb['spacing'], line=1.0)
         sub = asyncio.run(render('|'.join(parts[1:]), sst, mw * sb.get('wr', 0.75), 0, '', ''))
-    out = deco.stack(main, sub, int(sw * 0.05))
+    out = deco.stack(main, sub, int(sw * (0.4 if st.get('cool') else 0.05)))
     if rotate:
         h, w = out.shape[:2]; M = cv2.getRotationMatrix2D((w / 2, h / 2), -rotate, 1)
         c, s_ = abs(M[0, 0]), abs(M[0, 1]); nw, nh = int(h * s_ + w * c), int(h * c + w * s_)

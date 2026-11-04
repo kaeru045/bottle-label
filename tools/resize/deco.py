@@ -24,6 +24,13 @@ PALETTES = {
     'electric': dict(fill=['#ffffff', '#e0f6ff', '#7fd8ff', '#2a7fff', '#ffffff'], o1='#001a40', o2='#9fe8ff', glow='#2ab0ff', hi='#ffffff', ext='#001030'),
     'crimson':  dict(fill=['#ffd0d0', '#ff3030', '#a00010', '#3a0006'], o1='#0a0000', o2='#d8d8d8', glow='#ff1030', hi='#ffffff', ext='#200003'),
     'titanium': dict(fill=['#ffffff', '#d8d2c4', '#8f8676', '#3d372d', '#e8e2d4', '#9a907e'], o1='#0a0806', o2='#c9b98a', glow='#c9a050', hi='#ffffff', ext='#221c12'),
+    # クール系（2026-11-04 追加）：光らせない・色数を抑える
+    'mono':      dict(fill=['#ffffff', '#f1f3f5', '#c9ced4', '#ffffff', '#b4bac2'], o1='#0b0d10', o2='#ffffff', glow='#000000', hi='#ffffff'),
+    'matteblack':dict(fill=['#3a3d42', '#1b1d20', '#08090a'], o1='#ffffff', o2='#ffffff', glow='#000000', hi='#6a6e74'),
+    'icecool':   dict(fill=['#ffffff', '#e6f2fb', '#a9c8e0', '#e9f4fb'], o1='#0a1622', o2='#cfe6f7', glow='#000000', hi='#ffffff'),
+    'blackred':  dict(fill=['#2a2a2a', '#111111', '#000000'], o1='#d0101c', o2='#d0101c', glow='#000000', hi='#5a5a5a'),
+    'navygold':  dict(fill=['#fff6dc', '#e9cc84', '#b88a34', '#f3dda0'], o1='#0b1226', o2='#e9cc84', glow='#000000', hi='#ffffff'),
+    'split':     dict(fill=['#ffffff', '#dfe5ec', '#aab4bf', '#2b3138', '#5d6670', '#c3cbd4'], o1='#05070a', o2='#ffffff', glow='#000000', hi='#ffffff'),
     'neonpink': dict(fill=['#2a0020'], o1='#ffffff', o2='#ff4fd8', glow='#ff2ec4', hi='#ffffff'),
     'neonblue': dict(fill=['#001a2a'], o1='#ffffff', o2='#3de0ff', glow='#00b3ff', hi='#ffffff'),
 }
@@ -172,6 +179,17 @@ def _speed(m, sw, rng):
     return out
 
 
+def _lines(m, sw):
+    """名前の左右に細い線（クールな飾り）"""
+    ys, xs = np.nonzero(m > 128)
+    if not len(xs): return m
+    out = m.copy(); cy = int((ys.min() + ys.max()) / 2); th = max(2, sw * 0.11); ln = sw * 4.5; g = sw * 0.9
+    for x0, x1 in [(xs.min() - g - ln, xs.min() - g), (xs.max() + g, xs.max() + g + ln)]:
+        far = x0 if x0 < xs.min() else x1; near = x1 if x0 < xs.min() else x0
+        cv2.fillPoly(out, [np.array([(near, cy - th), (far, cy - th * .25), (far, cy + th * .25), (near, cy + th)], np.int32)], 255, cv2.LINE_AA)
+    return out
+
+
 def shape(mask, kind, seed=7):
     """白の型（uint8）に飾りを足す。kind は thorn / blade / flame / drip / crack / plain"""
     rng = np.random.default_rng(seed); m = (mask > 128).astype(np.uint8) * 255
@@ -181,6 +199,7 @@ def shape(mask, kind, seed=7):
         if k == 'skew': m = _skew(m, sw)
         elif k == 'angular': m = _angular(m, sw)
         elif k == 'slash': m = _slash(m, sw, rng)
+        elif k == 'lines': m = _lines(m, sw)
         elif k == 'speed': m = _speed(m, sw, rng)
         elif k == 'thorn': m = _thorn(m, sw, sk, rng)
         elif k == 'blade': m = _thorn(m, sw, sk, rng, 1.9, 0.18)
@@ -210,7 +229,7 @@ def _dil(a, r):
     r = max(1, int(r)); return cv2.dilate(a, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1)))
 
 
-def paint(m, sw, pal, neon=False, glitch=False, seed=7, extrude=False):
+def paint(m, sw, pal, neon=False, glitch=False, seed=7, extrude=False, cool=False, hollow=False):
     """型を塗って BGRA（uint8）にする"""
     P = PALETTES[pal] if isinstance(pal, str) else pal; pad = int(sw * 2.5)
     m = cv2.copyMakeBorder(m, pad, pad, pad, pad, cv2.BORDER_CONSTANT, 0)
@@ -225,6 +244,23 @@ def paint(m, sw, pal, neon=False, glitch=False, seed=7, extrude=False):
         _over(out, _grad(h, w, y0, y1, P['fill']), a * .3)
         _over(out, col(P['o2']), np.clip(cv2.GaussianBlur(ring, (0, 0), sw * .12) * 1.6, 0, 1))
         _over(out, col(P['o1']), np.clip(cv2.GaussianBlur(cv2.erode(ring, np.ones((3, 3))), (0, 0), sw * .04) * 1.2, 0, 1) * .95)
+    elif cool:  # 光らせず、細い縁と落ち影だけ
+        base = np.clip(a - cv2.erode(a, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(sw * .22) * 2 + 1,) * 2)), 0, 1) if hollow else a
+        sh = np.roll(cv2.GaussianBlur(_dil(base, sw * .12), (0, 0), sw * .45), int(sw * .18), 0)
+        _over(out, col('#000000'), np.clip(sh * .75, 0, 1))
+        if extrude:
+            e = _dil(a, sw * .08); acc = np.zeros_like(e)
+            for i in range(1, int(sw * .45) + 1): acc = np.maximum(acc, np.roll(np.roll(e, i, 0), int(i * .55), 1))
+            _over(out, col(P.get('ext', '#0a0c0f')), acc)
+        if hollow:
+            ring = np.clip(a - cv2.erode(a, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(sw * .22) * 2 + 1,) * 2)), 0, 1)
+            _over(out, col(P['o1']), _dil(ring, sw * .07))
+            _over(out, _grad(h, w, y0, y1, P['fill']), ring)
+        else:
+            _over(out, col(P['o1']), _dil(a, sw * (.12 if _rgb(P['fill'][0]).mean() < 100 else .07)))  # 黒い字は縁を太めに
+            _over(out, _grad(h, w, y0, y1, P['fill']), a)
+            s_ = max(1, int(sw * .06)); top = np.clip(a - np.roll(a, s_, axis=0), 0, 1)
+            _over(out, col(P['hi']), top * .7)
     else:
         _over(out, col(P['glow']), np.clip(cv2.GaussianBlur(_dil(a, sw * .3), (0, 0), sw * .7) * .85, 0, 1))
         if extrude:  # 立体（右下に厚み）
