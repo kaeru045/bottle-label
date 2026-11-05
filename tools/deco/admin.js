@@ -20,7 +20,7 @@ window.adminSpec = c => {
 };
 
 // 取り込まない案（試作など）。2026-11-06 ユーザー指定：#04719 の完全オリジナル試作（生成603の案1〜3）は消す
-window.ADMIN_SKIP = new Set([1061, 1062, 1063, 1064, 1065, 1066]); // 1064〜1066：2026-11-06 プロンプトのサンプル（生成604）
+window.ADMIN_SKIP = new Set([1061, 1062, 1063, 1064, 1065, 1066, 1076, 1077, 1078, 1079, 1080, 1081]); // 1064〜1066：2026-11-06 プロンプトのサンプル（生成604）
 window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
   const J = u => fetch(u).then(r => r.ok ? r.json() : Promise.reject(new Error(u + ' ' + r.status)));
   if (!/admin\.reserve-viva-decolino\.com/.test(location.host)) return ['admin のページで実行してください'];
