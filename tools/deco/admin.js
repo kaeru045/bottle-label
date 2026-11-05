@@ -27,7 +27,8 @@ window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
   const have = new Set(src.items.map(x => String(x.asset || '')));
   const since = Date.now() - days * 864e5;
   const orders = (await J('/api/orders?limit=100')).items.filter(o => !o.canceledAt && o.orderKind === 'original_champagne'
-    && !/complete|delivered|cancel|closed/.test(String(o.status)) && Date.parse(o.placedAt || o.createdAt) > since);
+    && !/complete|delivered|cancel|closed/.test(String(o.status)) && Date.parse(o.placedAt || o.createdAt) > since
+    && !/テスト|test/i.test([o.customerName, o.customerCompanyName].join(' '))); // テスト注文は対象外
   const res = []; let done = 0;
   for (const o of orders) {
     if (done >= max) break;
@@ -45,7 +46,7 @@ window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
         if (done >= max) break;
         const asset = 'adm-' + cd.id; if (have.has(asset)) continue;
         const tcode = tpls[cd.aiTemplateId] || (c.customerDesign && c.customerDesign.templateCode) || '';
-        const label = (c.lettering && !c.lettering.noText && c.lettering.label) || od.customerCompanyName || od.customerName || '';
+        const label = String((c.lettering && !c.lettering.noText && c.lettering.label) || od.customerCompanyName || od.customerName || '').replace(/\s*\n\s*/g, ' ').trim();
         const name = (label + ((od.contents || []).length > 1 ? '（' + c.branchNo + '）' : '') + (cands.length > 1 ? '（案' + cd.candidateNo + '）' : '')).slice(0, 80);
         const spec = adminSpec(c);
         if (dry) { res.push([o.displayOrderNumber, name, tcode, JSON.stringify(spec), cd.status].join(' ')); continue; }
