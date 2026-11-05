@@ -8,7 +8,10 @@
 --cx/--cy… 文字のまとまりの中心（2880×2048 の座標）。省略すると「人物の下」（基本の位置）：
             placement.json の大事な範囲の中央の真下、白い範囲の下端（y 1834）にそろえる
 --placement … place.py の出力先（placement.json）。省略時はデザイン画像と同じフォルダ
---width  … 文字のまとまりの横幅（px）。この幅に収まるよう自動で大きさを決める
+--width  … 文字のまとまりの横幅（px）。この幅に収まるよう自動で大きさを決める。
+            ボトルの正面で全部見えるように、正面の幅（FRONT、820px）より広くはしない。
+            1行だと小さくなりすぎる長い文言（名前＋Happy Birthday など）は、空白のところで自動で2段にする（文字は変えない）。
+            顔（placement.json の大事な範囲）にかかるときは、顔の下へずらし、入らなければ小さくする。（2026-11-05 ユーザー指定）
 --rotate … 傾き（度）
 --color1/--color2 … 色を上書き（背景から拾った色を使うとき）
 書体は fonts/（tools/resize/fonts、なければ npm の @fontsource から取得）を使う。
@@ -21,6 +24,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FONTDIR = os.environ.get('RESIZE_FONTS', os.path.join(HERE, 'fonts'))
 W, H = 2880, 2048
 SAFE = (268, 508, 2612, 1834)
+# ボトルを正面から見たときに見える横の範囲（common.FRONT に余白 30px）。文字は全部この中に入れる（2026-11-05 ユーザー指定）
+FRONT = (980, 1800)
 
 # 書体（@fontsource のパッケージ名）。jp＝日本語（ひらがな・カタカナ・漢字）も書ける
 FONTS = {'pirata': 'pirata-one', 'vibes': 'great-vibes', 'bangers': 'bangers', 'dancing': 'dancing-script',
@@ -357,16 +362,28 @@ def _box(design, placement):
     return json.load(open(pj))['box'] if os.path.exists(pj) else None
 
 
-def _place(t, design, placement, cx, cy):
-    """文字の左上。cx/cy が無ければ人物の下（白い範囲の下端）"""
+def _place(t, design, placement, cx, cy, top=None):
+    """文字の左上。cx/cy が無ければボトル正面の中央・人物の下（白い範囲の下端）。top を渡すとその高さより下に置く"""
     th, tw = t.shape[:2]; ys, xs = np.nonzero(t[:, :, 3] > 40)
-    if cx is None or cy is None:
-        b = _box(design, placement) or [SAFE[0], SAFE[1], SAFE[2], SAFE[1]]
-        vw = xs.max() - xs.min()
-        c = min(max((b[0] + b[2]) / 2, SAFE[0] + vw / 2 + 20), SAFE[2] - vw / 2 - 20)
-        cx = c - ((xs.min() + xs.max()) / 2 - tw / 2) if cx is None else cx
-        cy = (SAFE[3] - 30 - ys.max()) + th / 2 if cy is None else cy
+    vw = xs.max() - xs.min()
+    if cx is None:
+        c = (FRONT[0] + FRONT[1]) / 2
+        cx = c - ((xs.min() + xs.max()) / 2 - tw / 2)
+    if cy is None:
+        cy = (SAFE[3] - 30 - ys.max()) + th / 2
+        if top is not None: cy = max(cy, top - ys.min() + th / 2)
     return int(round(cx - tw / 2)), int(round(cy - th / 2))
+
+
+def _split2(text):
+    """長い1行を空白のところで2段に（文字そのものは変えない）。名前＋Happy Birthday は Happy の前で分ける"""
+    if '|' in text or not re.search(r'\s', text.strip()): return None
+    t = text.strip()
+    m = re.search(r'\s+(?=happy\s*birthday)', t, re.I) or re.search(r'(?<=birthday)\s+', t, re.I)
+    if m: return t[:m.start()] + '|' + t[m.end():]
+    sp = [m for m in re.finditer(r'\s+', t)]
+    m = min(sp, key=lambda m: abs(m.start() - len(t) / 2))
+    return t[:m.start()] + '|' + t[m.end():]
 
 
 def _contrast(im, t, x0, y0):
@@ -383,35 +400,53 @@ def _contrast(im, t, x0, y0):
 
 
 def apply(design, out_path, text, style, cx=None, cy=None, width=1800, rotate=0, placement='', color1='', color2='', effect=''):
-    """文字を入れて out_path に書き出す。cx/cy が無ければ人物の下（白い範囲の下端）。"""
+    """文字を入れて out_path に書き出す。cx/cy が無ければボトル正面の中央・人物の下（白い範囲の下端）。"""
     style, _, eff = style.partition(':'); effect = '+'.join(x for x in [eff, effect] if x)
     style = {v['jp']: k for k, v in STYLES.items()}.get(style, style)
     if changes_case(style, text): raise SystemExit(f'「{STYLES[style]["jp"]}」は全部大文字に見える書体なので、小文字を含む「{text}」には使えません（文字は依頼のまま変えない）')
     im = cv2.imread(design); assert im is not None and im.shape[1] == W, 'デザイン画像は 2880×2048'
     st = with_effect(STYLES[style], effect)
     isdeco = 'deco' in st
-    t = render_deco(text, st, width, rotate, color1, color2) if isdeco else asyncio.run(render(text, st, width, rotate, color1, color2))
+    fw = FRONT[1] - FRONT[0]
+    width = min(width, fw)  # ボトル正面で全部見える幅まで
+    draw = lambda tx, w: render_deco(tx, st, w, rotate, color1, color2) if isdeco else asyncio.run(render(tx, st, w, rotate, color1, color2))
+    t = draw(text, width)
+    # 1行だと低すぎる（文字が小さい）長い文言は2段にする
+    ys_, xs_ = np.nonzero(t[:, :, 3] > 40)
+    two = _split2(text)
+    if two and (ys_.max() - ys_.min()) < 0.17 * width:
+        t2 = draw(two, width); y2, _ = np.nonzero(t2[:, :, 3] > 40)
+        if (y2.max() - y2.min()) / 2 > (ys_.max() - ys_.min()): text, t = two, t2
+    box = _box(design, placement)
+    top = box[3] + 24 if box else None  # 顔（大事な範囲）の下端より下
+    for _ in range(4):  # 顔にかかる・下の帯にはみ出すときは小さくする
+        x0, y0 = _place(t, design, placement, cx, cy, top)
+        ys, xs = np.nonzero(t[:, :, 3] > 40)
+        if cy is not None or y0 + ys.max() <= SAFE[3] or width < fw * 0.45: break
+        room = SAFE[3] - (top if top is not None else SAFE[1])
+        width *= max(0.6, min(0.92, room / max(1, ys.max() - ys.min())))
+        t = draw(text, width)
     th, tw = t.shape[:2]
     for _ in range(0 if isdeco else 2):  # 背景に埋もれないように：文字と下の背景の明るさが近ければ、縁に影（または光）を足して描き直す
-        x0, y0 = _place(t, design, placement, cx, cy)
+        x0, y0 = _place(t, design, placement, cx, cy, top)
         c = _contrast(im, t, x0, y0)
         if c is None or abs(c[0] - c[1]) >= 100: break
         glow = 'rgba(0,0,0,.9)' if c[0] > c[1] else 'rgba(255,255,255,.9)'
         st['shadow'] = f'drop-shadow(0 0 .035em {glow}) drop-shadow(0 0 .09em {glow}) ' + st['shadow']
-        t = asyncio.run(render(text, st, width, rotate, color1, color2)); th, tw = t.shape[:2]
+        t = draw(text, width); th, tw = t.shape[:2]
     al = t[:, :, 3] > 40; ys, xs = np.nonzero(al)
-    box = _box(design, placement)
-    x0, y0 = _place(t, design, placement, cx, cy)
+    x0, y0 = _place(t, design, placement, cx, cy, top)
     bx = [x0 + xs.min(), y0 + ys.min(), x0 + xs.max(), y0 + ys.max()]
     ng = bx[0] < SAFE[0] or bx[1] < SAFE[1] or bx[2] > SAFE[2] or bx[3] > SAFE[3]
-    over = bool(box and bx[1] < box[3] and bx[0] < box[2] and bx[2] > box[0])  # 顔（大事な範囲）に重なる
+    nofront = bx[0] < FRONT[0] - 30 or bx[2] > FRONT[1] + 30
+    over = bool(box and bx[1] < box[3] and bx[3] > box[1] and bx[0] < box[2] and bx[2] > box[0])  # 顔（大事な範囲）に重なる
     out = im.astype(np.float32)
     sx0, sy0, sx1, sy1 = max(0, x0), max(0, y0), min(W, x0 + tw), min(H, y0 + th)
     sub = t[sy0 - y0:sy1 - y0, sx0 - x0:sx1 - x0].astype(np.float32)
     a_ = sub[:, :, 3:4] / 255
     out[sy0:sy1, sx0:sx1] = out[sy0:sy1, sx0:sx1] * (1 - a_) + sub[:, :, :3] * a_
     cv2.imwrite(out_path, np.clip(out, 0, 255).astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 95])
-    return {'out': out_path, 'text_box': [int(v) for v in bx], 'outside_safe': bool(ng), 'over_face': over}
+    return {'out': out_path, 'text': text, 'text_box': [int(v) for v in bx], 'outside_safe': bool(ng), 'outside_front': bool(nofront), 'over_face': over}
 
 
 def main():

@@ -78,3 +78,8 @@ Asana の「リサイズ」依頼を定期実行の Claude が拾って管理サ
 クール系（光らせない・色数少なめ）：coolsilver・coolline・coolblack・coolice・coolmincho・coolhollow・coolred・coolgold・coolsplit・coolsteel・cool3d・cyber・coolglitch・coolnavy。
 かっこいい系：slashsteel/slashred・katana・darkknight・speedchrome/fire/blue・thunder・edgesteel/edgegold・carbon・titanthorn・metal3d・gold3d（立体＝extrude）。
 種類：thornpink/silver/gold/purple/holo・thorncrack・bladeice/red/gold・emeraldblade・flamefire/purple/blue・dripblood/gold/sakura・crackchrome/gold・neonpink2/neonblue2・glitchholo/glitchthorn（`--list` に合う背景）。--color1/--color2 で塗りの色を上書き。
+
+## ボトル正面で全部見えるように（2026-11-05 ユーザー指定）
+- 提出用フォーマットの「前」のボトルで見える横の範囲は、仕上がり約 475〜915px（`common.FRONT`、作業 950〜1830px）。ロゴ・文字はこの中に全部入れる。
+- `textlayer.py`：文字の幅は正面の幅（820px）まで。位置は正面の中央・人物の下。顔（placement.json の大事な範囲）にかかるときは顔の下へずらし、下の帯にはみ出すなら小さくする。1行だと小さくなりすぎる長い文言は空白のところで自動で2段（名前＋Happy Birthday は Happy の前）。結果の `outside_front`・`over_face` が true なら直す。
+- `place.py --kind content`：ロゴ・文字入りのデザインは、大事な範囲を横はボトル正面の幅、縦は白い範囲に収める（以前の白い範囲いっぱいは `--wide`）。

@@ -5,18 +5,20 @@
 
 --box は元画像の座標で、必ず白い範囲に入れたいもの：
   head    … 人物写真。髪のてっぺん〜あごの四角。頭の上端を 540px（仕上がり270px）、高さを HEAD_H（標準 605px＝仕上がり、432pxの1.4倍）にそろえる。顔のアップの写真で写真が切れるときは、写真が丸ごと入る大きさまで小さくする（432px相当より小さくはしない）。
-  content … デザイン画像など。顔・文字・ロゴなど大事なものを全部囲む四角。白い範囲いっぱい（4% 余白）に収める。
+  content … デザイン画像など。顔・文字・ロゴなど大事なものを全部囲む四角。ボトルを正面から見て全部見えるように、
+            横はボトル正面の幅（FRONT）、縦は白い範囲に（4% 余白で）収める（2026-11-05 ユーザー指定）。--wide で以前の白い範囲いっぱい。
 出力：DIR/input.png（キャンバスに入る部分だけ、縮小済み）と DIR/placement.json（広げる量など）
 """
 import argparse, json, os, sys
 import cv2, numpy as np
-from common import W, H, SAFE, K
+from common import W, H, SAFE, K, FRONT
 
 ap = argparse.ArgumentParser()
 ap.add_argument('src'); ap.add_argument('--box', required=True); ap.add_argument('--kind', choices=['head', 'content'], required=True)
 ap.add_argument('--pos', choices=['center', 'left', 'right'], default='center'); ap.add_argument('--out', required=True)
 ap.add_argument('--zoom', type=float, default=1.0, help='大きさの調整（1.15＝15%大きく）。修正依頼「人物をもっと大きく」など')
 ap.add_argument('--size', choices=['リメイク', '小さめ', '標準', '大きめ', '特大'], default='標準', help='管理サイトの「人物の大きさ」（zoom に掛ける：リメイク＝最初のリサイズの大きさ（頭360px）・小さめ0.87・大きめ1.15・特大1.3）')
+ap.add_argument('--wide', action='store_true', help='content を白い範囲いっぱいに置く（以前の置き方。正面からは端が見えなくなる）')
 ap.add_argument('--dx', type=float, default=0, help='左右に動かす量（仕上がりのpx、＋で右）'); ap.add_argument('--dy', type=float, default=0, help='上下に動かす量（仕上がりのpx、＋で下）')
 a = ap.parse_args()
 
@@ -48,9 +50,11 @@ if a.kind == 'head':
     cx = {'center': W / 2, 'left': SAFE['x0'] + 66 * K + bw * s / 2, 'right': SAFE['x1'] - 66 * K - bw * s / 2}[a.pos]
 else:
     m = 0.04
-    s = min(sw * (1 - 2 * m) / bw, sh * (1 - 2 * m) / bh)
+    fx0, fx1 = (SAFE['x0'], SAFE['x1']) if a.wide else (FRONT['x0'], FRONT['x1'])
+    fw = fx1 - fx0
+    s = min(fw * (1 - 2 * m) / bw, sh * (1 - 2 * m) / bh)
     y = (SAFE['y0'] + SAFE['y1']) / 2 - (y0 + bh / 2) * s
-    cx = {'center': W / 2, 'left': SAFE['x0'] + sw * m + bw * s / 2, 'right': SAFE['x1'] - sw * m - bw * s / 2}[a.pos]
+    cx = {'center': (fx0 + fx1) / 2, 'left': fx0 + fw * m + bw * s / 2, 'right': fx1 - fw * m - bw * s / 2}[a.pos]
 x = cx - (x0 + bw / 2) * s
 if a.zoom != 1.0:  # 大事な範囲の中心を軸に拡大・縮小
     ccx, ccy = x + (x0 + bw / 2) * s, y + (y0 + bh / 2) * s
