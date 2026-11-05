@@ -19,6 +19,8 @@ window.adminSpec = c => {
   return Object.assign({ seal }, tag ? { tag } : {});
 };
 
+// 取り込まない案（試作など）。2026-11-06 ユーザー指定：#04719 の完全オリジナル試作（生成603の案1〜3）は消す
+window.ADMIN_SKIP = new Set([1061, 1062, 1063]);
 window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
   const J = u => fetch(u).then(r => r.ok ? r.json() : Promise.reject(new Error(u + ' ' + r.status)));
   if (!/admin\.reserve-viva-decolino\.com/.test(location.host)) return ['admin のページで実行してください'];
@@ -44,7 +46,7 @@ window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
       const cands = ((await J('/api/ai-generations/' + g.id + '/candidates')).items || []).filter(x => x.imageUrl);
       for (const cd of cands) {
         if (done >= max) break;
-        const asset = 'adm-' + cd.id; if (have.has(asset)) continue;
+        const asset = 'adm-' + cd.id; if (have.has(asset) || ADMIN_SKIP.has(cd.id)) continue;
         const tcode = tpls[cd.aiTemplateId] || (c.customerDesign && c.customerDesign.templateCode) || '';
         const label = String((c.lettering && !c.lettering.noText && c.lettering.label) || od.customerCompanyName || od.customerName || '').replace(/\s*\n\s*/g, ' ').trim();
         const name = (label + ((od.contents || []).length > 1 ? '（' + c.branchNo + '）' : '') + (cands.length > 1 ? '（案' + cd.candidateNo + '）' : '')).slice(0, 80);
