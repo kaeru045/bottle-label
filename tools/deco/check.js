@@ -33,6 +33,32 @@ window.tplFor = async (decolino, template) => {
   return img ? img.getAttribute('src') : null;
 };
 window.tplJpeg = async src => { const bm = await createImageBitmap(await fetch(src).then(r => r.blob())); const k = Math.min(1, 1000 / Math.max(bm.width, bm.height)); const c = new OffscreenCanvas(Math.round(bm.width * k), Math.round(bm.height * k)); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); const b = await c.convertToBlob({ type: 'image/jpeg', quality: 0.85 }); const u = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
+// Decolinoに入れた元の写真（/order にある、ファイル名つきの画像）。LINEに一緒に送るため管理サイトに保存する（2026-11-05 ユーザー指定）
+window.srcPhoto = async decolinoUrl => {
+  try {
+    const path = new URL(decolinoUrl, location.origin).pathname.replace(/\/(order|generate|refine|export)$/, '');
+    const h = await fetch(path + '/order').then(r => r.text()); const d = new DOMParser().parseFromString(h, 'text/html');
+    const img = [...d.querySelectorAll('img')].find(i => /\/api\/assets\//.test(i.getAttribute('src') || '') && /\.(png|jpe?g|webp|heic)$/i.test((i.alt || '').trim()));
+    if (!img) return null;
+    const bm = await createImageBitmap(await fetch(img.getAttribute('src')).then(r => r.blob()));
+    const k = Math.min(1, 1600 / Math.max(bm.width, bm.height)); const c = new OffscreenCanvas(Math.round(bm.width * k), Math.round(bm.height * k));
+    c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+    const u = new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.88 })).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
+    return btoa(s);
+  } catch (e) { return null; }
+};
+// 元写真がまだ無い案件に、あとから付ける（版は上げない）
+window.backfillSrc = async ({ max = 50 } = {}) => {
+  const src = await siteApi({ action: 'sources' }); if (!src.ok) return src;
+  const res = []; let n = 0;
+  for (const it of src.items) {
+    if (!it.decolino || it.src || n >= max) continue;
+    const data = await srcPhoto(it.decolino); if (!data) { res.push(it.name + '：写真なし'); continue; }
+    const r = await siteApi({ action: 'setSrc', id: it.id, src: { name: (it.order + '_' + it.name + '_元写真.jpg').replace(/[\\/:*?"<>|#]/g, ''), data } });
+    res.push(it.name + '：' + (r.ok ? '付けました' : '失敗 ' + (r.error || r.status))); n++;
+  }
+  return res;
+};
 window.registerToSite = async function (o) {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const b64 = async blob => { const u = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
@@ -63,7 +89,8 @@ window.registerToSite = async function (o) {
       design: { name: o.fileBase + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
       designPreview: { name: o.fileBase + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
       tpl: await (async () => { try { const s = o.decolino && o.template && await tplFor(o.decolino, o.template); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
-      tag: tagBlob ? { name: o.fileBase + 'タグ_' + ((w.__TAGNAME || {})[tk] || tk) + '.png', data: await b64(tagBlob) } : null });
+      tag: tagBlob ? { name: o.fileBase + 'タグ_' + ((w.__TAGNAME || {})[tk] || tk) + '.png', data: await b64(tagBlob) } : null,
+      src: await (async () => { const d = o.decolino && await srcPhoto(o.decolino); return d ? { name: o.fileBase + '元写真.jpg', data: d } : null; })() });
     const res = await fetch(o.webappUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
     const t = await res.text(); try { return JSON.parse(t); } catch (e) { return { ok: false, status: res.status, body: t.slice(0, 200) }; }
   } finally { fr.remove(); }
@@ -83,7 +110,7 @@ window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
     if (c.asset === ((sp && sp.confirmed) || it.asset)) { res.push(tag + '：変更なし'); continue; }
     if (!sp) { res.push(tag + '：仕様が未登録のためスキップ'); continue; }
     if (dry || done >= max) { res.push(tag + '：更新あり（未反映）'); continue; }
-    const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + c.asset, asset: c.asset, order: it.order, name: it.name,
+    const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + c.asset, asset: c.asset, order: it.order, name: it.name, decolino: it.decolino,
       shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', logoPos: sp.logoPos || null, ...backOf(sp, it.id), confirmed: c.asset, note: 'Decolinoで確定した修正版',
       fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
     res.push(tag + '：' + (r.ok ? 'v' + r.version + ' に更新' : '失敗 ' + (r.error || r.status))); done++;
@@ -119,7 +146,7 @@ window.finishFix = async id => {
   let sp = null; try { sp = JSON.parse(it.spec || 'null'); } catch (e) {}
   if (!sp) { await siteApi({ action: 'fixState', id, state: 'エラー:仕様が未登録です' }); return '仕様なし'; }
   const cf = await confirmedAsset(it.decolino);
-  const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + asset, asset, order: it.order, name: it.name,
+  const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + asset, asset, order: it.order, name: it.name, decolino: it.decolino,
     shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', logoPos: sp.logoPos || null, ...backOf(sp, id), confirmed: (cf && cf.asset) || 'none', fixDone: true,
     note: '修正指示「' + it.fix + '」で作り直し（Decolinoは未確定）',
     fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
