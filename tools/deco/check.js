@@ -40,7 +40,13 @@ window.srcPhoto = async decolinoUrl => {
     const h = await fetch(path + '/order').then(r => r.text()); const d = new DOMParser().parseFromString(h, 'text/html');
     const img = [...d.querySelectorAll('img')].find(i => /\/api\/assets\//.test(i.getAttribute('src') || '') && /\.(png|jpe?g|webp|heic)$/i.test((i.alt || '').trim()));
     if (!img) return null;
-    const bm = await createImageBitmap(await fetch(img.getAttribute('src')).then(r => r.blob()));
+    return await photoB64(img.getAttribute('src'));
+  } catch (e) { return null; }
+};
+// 画像URL → 長辺1600pxのJPEG（base64）
+window.photoB64 = async url => {
+  try {
+    const bm = await createImageBitmap(await fetch(url).then(r => r.blob()));
     const k = Math.min(1, 1600 / Math.max(bm.width, bm.height)); const c = new OffscreenCanvas(Math.round(bm.width * k), Math.round(bm.height * k));
     c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
     const u = new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.88 })).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
@@ -88,9 +94,9 @@ window.registerToSite = async function (o) {
       asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, force: !!o.force, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', logoPos: o.logoPos || null, back: o.back || '', backOpt: o.backOpt || {} },
       design: { name: o.fileBase + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
       designPreview: { name: o.fileBase + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
-      tpl: await (async () => { try { const s = o.decolino && o.template && await tplFor(o.decolino, o.template); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
+      tpl: await (async () => { try { const s = o.tplUrl || (o.decolino && o.template && await tplFor(o.decolino, o.template)); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
       tag: tagBlob ? { name: o.fileBase + 'タグ_' + ((w.__TAGNAME || {})[tk] || tk) + '.png', data: await b64(tagBlob) } : null,
-      src: await (async () => { const d = o.decolino && await srcPhoto(o.decolino); return d ? { name: o.fileBase + '元写真.jpg', data: d } : null; })() });
+      src: await (async () => { const d = o.srcUrl ? await photoB64(o.srcUrl) : o.decolino && await srcPhoto(o.decolino); return d ? { name: o.fileBase + '元写真.jpg', data: d } : null; })() });
     const res = await fetch(o.webappUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body });
     const t = await res.text(); try { return JSON.parse(t); } catch (e) { return { ok: false, status: res.status, body: t.slice(0, 200) }; }
   } finally { fr.remove(); }
