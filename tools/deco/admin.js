@@ -29,7 +29,7 @@ window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
   const have = new Set(src.items.map(x => String(x.asset || '')));
   // 2026-11-06 ユーザー指定：LINEで案を選んで確定したら、ほかの案は一覧から消える。消えた案を取り込み直さないよう、
   // 同じ注文・名前で確定（確認OK・入稿済み・完了）した案件があれば、その注文・名前の案は取り込まない
-  const done = new Set(src.items.filter(x => /確認OK|入稿済み|完了/.test(String(x.status || ''))).map(x => String(x.order) + '|' + String(x.name || '').replace(/（案\d+）$/, '')));
+  const picked = new Set(src.items.filter(x => /確認OK|入稿済み|完了/.test(String(x.status || ''))).map(x => String(x.order) + '|' + String(x.name || '').replace(/（案\d+）$/, '')));
   const since = Date.now() - days * 864e5;
   const orders = (await J('/api/orders?limit=100')).items.filter(o => !o.canceledAt && o.orderKind === 'original_champagne'
     && !/complete|delivered|cancel|closed/.test(String(o.status)) && Date.parse(o.placedAt || o.createdAt) > since
@@ -53,7 +53,7 @@ window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
         const tcode = tpls[cd.aiTemplateId] || (c.customerDesign && c.customerDesign.templateCode) || '';
         const label = String((c.lettering && !c.lettering.noText && c.lettering.label) || od.customerCompanyName || od.customerName || '').replace(/\s*\n\s*/g, ' ').trim();
         const base = label + ((od.contents || []).length > 1 ? '（' + c.branchNo + '）' : '');
-        if (done.has(String(o.displayOrderNumber) + '|' + base)) continue;
+        if (picked.has(String(o.displayOrderNumber) + '|' + base)) continue;
         const name = (base + (cands.length > 1 ? '（案' + cd.candidateNo + '）' : '')).slice(0, 80);
         const spec = adminSpec(c);
         if (dry) { res.push([o.displayOrderNumber, name, tcode, JSON.stringify(spec), cd.status].join(' ')); continue; }
