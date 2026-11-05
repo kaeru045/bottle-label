@@ -21,6 +21,15 @@ call('page').then(h => {
   if (h.indexOf(RUN) < 0) throw new Error('画面の形式が変わりました（run の定義が見つかりません）');
   h = h.replace(RUN, 'const run=(fn,...a)=>window.__orishanCall(fn,a);')
        .replace('<head>', '<head><meta name="viewport" content="width=device-width, initial-scale=1"><title>オリシャン完成デザイン管理</title>');
+  // 2026-11-05 ユーザー指定：「もっと見る」で読み込んだ先のデザインが見えない（Googleにログインしていないスマホなどで遅い）を直す。
+  // Googleドライブのサムネイルが開けない端末では、1回失敗したら以後は最初から管理サイト経由で読み込み、同時に読み込む数を増やし、少し先まで先読みする。
+  const fix = [
+    ['function pumpThumb(){ while(thumbOn<6&&thumbQ.length)', 'function pumpThumb(){ while(thumbOn<16&&thumbQ.length)'],
+    ['function loadThumb(id){ return thumbs[id]||(thumbs[id]=Promise.resolve(TH(id))); }', 'function loadThumb(id){ return thumbs[id]||(thumbs[id]=window.__driveBad?loadThumbSrv(id):Promise.resolve(TH(id))); }'],
+    ['im.__fb=1;', 'im.__fb=1;window.__driveBad=1;'],
+    ["{rootMargin:'300px 0px'}", "{rootMargin:'1500px 0px'}"],
+  ];
+  fix.forEach(([a, b]) => { if (h.indexOf(a) >= 0) h = h.replace(a, b); });
   document.open(); document.write(h); document.close();
 }).catch(e => { document.getElementById('m').textContent = '読み込めませんでした：' + e.message + '（再読み込みしてください）'; });
 </script>
