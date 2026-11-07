@@ -21,6 +21,8 @@ from common import api, b64file  # noqa: E402
 
 ADMIN_SKIP = {1061, 1062, 1063, 1064, 1065, 1066, 1076, 1077, 1078, 1079, 1080, 1081}  # 試作・サンプル（admin.js と同じ）
 SKIP_ORDERS = {4688}  # テスト注文（外部APIには名前が無いので番号で除く）
+# 2026-11-08 ユーザー指定：取り込みが止まっていた間に溜まった案（47件）は取り込まず、これより後に生成された案だけ取り込む
+SINCE = '2026-11-07T15:20:00Z'
 
 
 def A(path):
@@ -81,7 +83,7 @@ def main():
     tmp = tempfile.mkdtemp(prefix='adm_')
     for o in orders:
         if done >= a.max: break
-        try: gens = [g for g in A('/ai-generations?orderId=%d' % o['id']).get('items', []) if g.get('status') == 'generated']
+        try: gens = [g for g in A('/ai-generations?orderId=%d' % o['id']).get('items', []) if g.get('status') == 'generated' and str(g.get('requestedAt') or '') > SINCE]
         except Exception: continue
         if not gens: continue
         od = A('/orders/%d' % o['id'])
