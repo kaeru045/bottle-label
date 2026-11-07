@@ -55,19 +55,31 @@ window.logoPlace = async (canvas, R, ar) => { // R＝[左,上,右]、ar＝ロゴ
 window.addLogo = async (canvas, key, pos) => {
   const r = await siteApi({ action: 'logo', logo: key }); if (!r.ok) throw new Error('ロゴ取得失敗 ' + (r.error || r.status));
   const bm = await createImageBitmap(await (await fetch('data:image/png;base64,' + r.data)).blob());
-  const W = canvas.width, H = canvas.height; let R = Array.isArray(pos) && pos.length >= 3 ? [pos[0], pos[1], pos[0] + pos[2]] : [0.4197, 0.8270, 0.5736];
+  const W = canvas.width, H = canvas.height; let R = Array.isArray(pos) && pos.length >= 3 ? [pos[0], pos[1], pos[0] + pos[2]] : [0.3997, 0.8270, 0.5937]; // 2026-11-07：ロゴを大きく（幅 15.4%→19.4%、中心は同じ）
   window.__logoNote = '';
   if (!(Array.isArray(pos) && pos.length >= 3)) {
     try { const pl = await logoPlace(canvas, R, (bm.height / bm.width) * (W / H)); R = pl.R; window.__logoNote = pl.note; }
     catch (e) { window.__logoNote = '⚠️名前とロゴの重なりを確認できませんでした（' + String(e.message || e).slice(0, 60) + '）'; }
   }
-  const lw = Math.round((R[2] - R[0]) * W), lh = Math.round(lw * bm.height / bm.width);
+  const lw = Math.round((R[2] - R[0]) * W), lh = Math.round(lw * bm.height / bm.width), X = Math.round(R[0] * W), Y = Math.round(R[1] * H);
+  // 2026-11-07 ユーザー指定（宝石箱ロゴを大きく・見えるように色変え）：下の明るさを見て、明るい背景なら濃いガンメタル＋白い縁、暗い背景なら今までの銀
+  const ctx = canvas.getContext('2d'), under = ctx.getImageData(X, Y, Math.max(1, Math.min(lw, W - X)), Math.max(1, Math.min(lh, H - Y))).data;
+  let lum = 0; for (let i = 0; i < under.length; i += 4) lum += 0.299 * under[i] + 0.587 * under[i + 1] + 0.114 * under[i + 2]; lum /= under.length / 4;
+  const dark = lum > 150;
   const m = new OffscreenCanvas(lw, lh), mx = m.getContext('2d'); mx.drawImage(bm, 0, 0, lw, lh);
   const id = mx.getImageData(0, 0, lw, lh), p = id.data;
-  for (let y = 0; y < lh; y++) { const c = Math.round(250 - 45 * Math.abs(((y / lh) * 2) % 2 - 1)); for (let x = 0; x < lw; x++) { const i = (y * lw + x) * 4, a = p[i]; p[i] = c; p[i + 1] = c; p[i + 2] = Math.min(255, c + 4); p[i + 3] = a; } }
+  for (let y = 0; y < lh; y++) {
+    const t = y / lh, k = Math.abs((t * 2) % 2 - 1);
+    const c = dark ? [Math.round(34 + 70 * k), Math.round(44 + 60 * k), Math.round(58 + 62 * k)] : [Math.round(250 - 45 * k), Math.round(250 - 45 * k), Math.min(255, Math.round(254 - 45 * k))];
+    for (let x = 0; x < lw; x++) { const i = (y * lw + x) * 4, a = p[i]; p[i] = c[0]; p[i + 1] = c[1]; p[i + 2] = c[2]; p[i + 3] = a; }
+  }
   mx.putImageData(id, 0, 0);
-  const ctx = canvas.getContext('2d'); ctx.save(); ctx.shadowColor = 'rgba(60,40,40,0.7)'; ctx.shadowBlur = lw * 0.02; ctx.shadowOffsetX = ctx.shadowOffsetY = lw * 0.006;
-  ctx.drawImage(m, Math.round(R[0] * W), Math.round(R[1] * H)); ctx.restore();
+  ctx.save();
+  if (dark) { // 白い縁と淡い光で背景から浮かせる
+    ctx.shadowColor = 'rgba(255,255,255,0.95)'; ctx.shadowBlur = lw * 0.012; for (let i = 0; i < 3; i++) ctx.drawImage(m, X, Y);
+    ctx.shadowColor = 'rgba(255,255,255,0.7)'; ctx.shadowBlur = lw * 0.04; ctx.drawImage(m, X, Y);
+  } else { ctx.shadowColor = 'rgba(60,40,40,0.7)'; ctx.shadowBlur = lw * 0.02; ctx.shadowOffsetX = ctx.shadowOffsetY = lw * 0.006; }
+  ctx.drawImage(m, X, Y); ctx.restore();
   return R;
 };
 // 選んだテンプレートの見本画像（比較用）
