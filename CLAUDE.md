@@ -35,6 +35,7 @@
 - 横長リサイズの自動背景拡張：`worker/firefly-proxy.js`（Cloudflare Worker）が Firefly API（IMS client_credentials → `/v2/storage/image` → `/v3/images/expand-async`、`placement.inset` で位置指定 → statusUrl をポーリング）を呼ぶ。シークレット `FIREFLY_CLIENT_ID`／`FIREFLY_CLIENT_SECRET`／`TOOL_PASS`。無料プランの外部通信50回/リクエストに収めるため、ポーリングは2秒×最大40回。ツール側の URL・合言葉は localStorage（`wideApi`／`widePass`）。Artifact 版は外部 fetch 不可なので自動は GitHub Pages 版のみ。
 - 裏の文字（Asanaの「裏：〇〇」）は `await window.__setBackText(text, {dir, font, color1, color2, stroke})` でロゴ位置に入れる（向きは縦書き v／横書き h／90° r／auto、書体は `BACKFONTS`＝jsdelivr の @fontsource、色は省くとデザインから自動）。大きさは自動でフォーマット内（幅≦240px・高さ≦600px・中心585px、1440×1024換算）。`window.__designJpeg()` で文字入りのデザイン画像。画面はステップ2「裏の文字」。2026-10-29 ユーザー指定（色・書体はデザインに合わせる、縦書きに限らない）。
 - 公開ページにお客様のロゴ等のサンプルを入れない。
+- 宝石箱など店のロゴ（tools/deco/check.js addLogo）：logoPos が無ければ入れる前に PP-OCRv3 の文字検出（tools/deco/models/text_det.onnx、onnxruntime-web 1.19.2）で名前を探し、下中央のロゴが重なるなら名前のすぐ下へ（下端0.965まで、最小60%）。入らなければメモに警告（2026-11-07 ユーザー指定）。
 - 完成画像のチェック（tools/resize/check.py）：LINEで送る前に元画像との違い・顔の描き直し・生成部分を判定し、チェック画像と文を管理サイトに保存（2026-11-07 ユーザー指定）。
 - ネックシールの「自動」（`sl_lx_auto`、既定）：デザイン全体の平均の明るさが0.5以上ならホワイト、未満ならブラック（`sealAuto()`／`window.__sealAuto()`）。依頼に色の指定が無い・おまかせのときは自動処理もこれを使う。2026-11-01 ユーザー指定（薄い色のデザインは白、濃い色のデザインは黒）。
 - 裏の文字の効果（backOpt.effect：shadow／glow／emboss／3d、「+」で重ねる）と高級感の書体（shippori・oldmincho・kaisei・cormorant・bodoni・cinzelr・allura・parisienne・italiana・marcellus）を追加。2026-11-02 ユーザー指定（高級感のある文字・シャドーなどの効果）。
