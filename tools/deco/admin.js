@@ -50,7 +50,7 @@ window.adminSync = async ({ max = 10, days = 30, dry = false } = {}) => {
       for (const cd of cands) {
         if (done >= max) break;
         const asset = 'adm-' + cd.id; if (have.has(asset) || ADMIN_SKIP.has(cd.id)) continue;
-        const tcode = tpls[cd.aiTemplateId] || (c.customerDesign && c.customerDesign.templateCode) || '';
+        const tcode = tpls[cd.aiTemplateId] || (c.customerDesign && c.customerDesign.templateCode) || 'HP生成'; // 空だと同じ注文・名前のリサイズ等を上書きする
         const label = String((c.lettering && !c.lettering.noText && c.lettering.label) || od.customerCompanyName || od.customerName || '').replace(/\s*\n\s*/g, ' ').trim();
         const base = label + ((od.contents || []).length > 1 ? '（' + c.branchNo + '）' : '');
         if (picked.has(String(o.displayOrderNumber) + '|' + base)) continue;
