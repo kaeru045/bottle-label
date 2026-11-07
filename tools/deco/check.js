@@ -9,12 +9,58 @@ window.confirmedAsset = async decolinoUrl => {
   const imgs = [...doc.querySelectorAll('img')].filter(i => /\/api\/assets\//.test(i.getAttribute('src') || '') && (i.alt || '').trim() && !/\.(png|jpe?g|webp|heic)$/i.test(i.alt));
   return imgs.length ? { asset: imgs[0].getAttribute('src').split('/').pop(), label: imgs[0].alt } : null;
 };
-// 店のロゴ（宝石箱など）を決まった位置に銀色で入れる。ロゴは管理サイト側に保存（公開ページには置かない）
-// pos＝[左, 上, 幅]（画像に対する割合）。仕様の logoPos で案件ごとに位置・大きさを変えられる（名前と重なるときなど）
+// 店のロゴ（宝石箱など）を決まった位置（下中央）に銀色で入れる。ロゴは管理サイト側に保存（公開ページには置かない）
+// pos＝[左, 上, 幅]（画像に対する割合）。仕様の logoPos があればその位置（手作業の指定）。
+// 2026-11-07 ユーザー指定（宝石箱でまた名前とロゴが重なった）：logoPos が無いときは、入れる前に画像の文字（名前）を探し、
+// 下中央のロゴが名前に重なるなら名前のすぐ下へずらす（入らなければ60%まで小さく）。結果は window.__logoNote（メモに残す）。
+window.__ortLoad = async () => {
+  if (window.ort && window.ort.InferenceSession) return window.ort;
+  const V = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
+  (0, eval)(await fetch(V + 'ort.min.js').then(r => { if (!r.ok) throw new Error('ort ' + r.status); return r.text(); }) + '\n;window.ort = ort;'); // "use strict" の eval では var が外に出ないので入れる
+  window.ort.env.wasm.wasmPaths = V; window.ort.env.wasm.numThreads = 1; return window.ort;
+};
+// 文字の枠（PP-OCRv3 の文字検出。tools/deco/models/text_det.onnx）。reg＝探す範囲 [左,上,右,下]（割合）→ [[x0,y0,x1,y1,score],…]（割合）
+window.textBoxes = async (canvas, reg) => {
+  const ort = await __ortLoad();
+  window.__detSess = window.__detSess || await ort.InferenceSession.create('https://kaeru045.github.io/bottle-label/tools/deco/models/text_det.onnx', { executionProviders: ['wasm'] });
+  const W = canvas.width, H = canvas.height, x0 = Math.round(reg[0] * W), y0 = Math.round(reg[1] * H), cw = Math.round((reg[2] - reg[0]) * W), ch = Math.round((reg[3] - reg[1]) * H);
+  const k = 736 / Math.min(cw, ch), nw = Math.max(32, Math.round(cw * k / 32) * 32), nh = Math.max(32, Math.round(ch * k / 32) * 32);
+  const c = new OffscreenCanvas(nw, nh), cx = c.getContext('2d'); cx.drawImage(canvas, x0, y0, cw, ch, 0, 0, nw, nh);
+  const px = cx.getImageData(0, 0, nw, nh).data, N = nw * nh, t = new Float32Array(3 * N);
+  const mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225];
+  for (let i = 0; i < N; i++) { const b = px[i * 4 + 2], g = px[i * 4 + 1], r = px[i * 4]; t[i] = (b / 255 - mean[0]) / std[0]; t[N + i] = (g / 255 - mean[1]) / std[1]; t[2 * N + i] = (r / 255 - mean[2]) / std[2]; } // 色の並びは BGR（学習時と同じ）
+  const s = window.__detSess, out = await s.run({ [s.inputNames[0]]: new ort.Tensor('float32', t, [1, 3, nh, nw]) }), p = out[s.outputNames[0]].data;
+  const lab = new Int32Array(N), res = []; let id = 0;
+  for (let i = 0; i < N; i++) {
+    if (p[i] <= 0.3 || lab[i]) continue;
+    id++; const st = [i]; lab[i] = id; let a = 0, sum = 0, mnx = nw, mny = nh, mxx = 0, mxy = 0;
+    while (st.length) { const j = st.pop(), x = j % nw, y = (j / nw) | 0; a++; sum += p[j]; if (x < mnx) mnx = x; if (x > mxx) mxx = x; if (y < mny) mny = y; if (y > mxy) mxy = y;
+      for (const q of [j - 1, j + 1, j - nw, j + nw]) { if (q < 0 || q >= N || lab[q] || p[q] <= 0.3) continue; if ((q === j - 1 && x === 0) || (q === j + 1 && x === nw - 1)) continue; lab[q] = id; st.push(q); } }
+    if (a < 30 || sum / a < 0.5) continue;
+    const bw = mxx - mnx + 1, bh = mxy - mny + 1, d = a * 1.6 / (2 * (bw + bh));
+    res.push([((mnx - d) * cw / nw + x0) / W, ((mny - d) * ch / nh + y0) / H, ((mxx + 1 + d) * cw / nw + x0) / W, ((mxy + 1 + d) * ch / nh + y0) / H, sum / a]);
+  }
+  return res;
+};
+window.logoPlace = async (canvas, R, ar) => { // R＝[左,上,右]、ar＝ロゴの高さ÷幅（割合どうし）。戻り値 { R, note }
+  const L = [R[0], R[1], R[2], R[1] + (R[2] - R[0]) * ar], m = 0.01;
+  const hit = b => b[0] < L[2] + m && b[2] > L[0] - m && b[1] < L[3] + m && b[3] > L[1] - m;
+  const bs = (await textBoxes(canvas, [0.15, 0.45, 0.85, 1])).filter(b => b[3] - b[1] >= 0.035 && (b[2] - b[0]) / (b[3] - b[1]) < 12); // 細長い線（レースの縁など）は文字ではない
+  const hs = bs.filter(hit); if (!hs.length) return { R, note: '' };
+  const nb = Math.max(...hs.map(b => b[3])), lim = 0.965, h = L[3] - L[1], top = nb + 0.004; // 下の帯（917px〜）に入りすぎないよう 0.965 まで
+  const sc = Math.min(1, (lim - top) / h);
+  if (sc >= 0.6) { const w = (R[2] - R[0]) * sc, c = (R[0] + R[2]) / 2; return { R: [c - w / 2, top, c + w / 2], note: 'ロゴを名前の下へずらしました' + (sc < 1 ? '（' + Math.round(sc * 100) + '%）' : '') }; }
+  return { R, note: '⚠️ロゴが名前と重なっている可能性（下に入りません。確認してください）' };
+};
 window.addLogo = async (canvas, key, pos) => {
   const r = await siteApi({ action: 'logo', logo: key }); if (!r.ok) throw new Error('ロゴ取得失敗 ' + (r.error || r.status));
   const bm = await createImageBitmap(await (await fetch('data:image/png;base64,' + r.data)).blob());
-  const W = canvas.width, H = canvas.height, R = Array.isArray(pos) && pos.length >= 3 ? [pos[0], pos[1], pos[0] + pos[2]] : [0.4197, 0.8270, 0.5736, 0.9284];
+  const W = canvas.width, H = canvas.height; let R = Array.isArray(pos) && pos.length >= 3 ? [pos[0], pos[1], pos[0] + pos[2]] : [0.4197, 0.8270, 0.5736];
+  window.__logoNote = '';
+  if (!(Array.isArray(pos) && pos.length >= 3)) {
+    try { const pl = await logoPlace(canvas, R, (bm.height / bm.width) * (W / H)); R = pl.R; window.__logoNote = pl.note; }
+    catch (e) { window.__logoNote = '⚠️名前とロゴの重なりを確認できませんでした（' + String(e.message || e).slice(0, 60) + '）'; }
+  }
   const lw = Math.round((R[2] - R[0]) * W), lh = Math.round(lw * bm.height / bm.width);
   const m = new OffscreenCanvas(lw, lh), mx = m.getContext('2d'); mx.drawImage(bm, 0, 0, lw, lh);
   const id = mx.getImageData(0, 0, lw, lh), p = id.data;
@@ -22,6 +68,7 @@ window.addLogo = async (canvas, key, pos) => {
   mx.putImageData(id, 0, 0);
   const ctx = canvas.getContext('2d'); ctx.save(); ctx.shadowColor = 'rgba(60,40,40,0.7)'; ctx.shadowBlur = lw * 0.02; ctx.shadowOffsetX = ctx.shadowOffsetY = lw * 0.006;
   ctx.drawImage(m, Math.round(R[0] * W), Math.round(R[1] * H)); ctx.restore();
+  return R;
 };
 // 選んだテンプレートの見本画像（比較用）
 window.tplFor = async (decolino, template) => {
@@ -90,7 +137,7 @@ window.registerToSite = async function (o) {
     const dOut = o.back ? await (await fetch('data:image/jpeg;base64,' + w.__designJpeg(0.95))).blob() : design;
     const tc = w.__buildTagCanvas && w.__buildTagCanvas(), tk = (d.querySelector('input[name=tag]:checked') || {}).value;
     const tagBlob = tc ? await new Promise(r => tc.toBlob(r, 'image/png')) : null;
-    const body = JSON.stringify({ key: o.key, order: o.order, shop: o.shop, name: o.name, template: o.template, due: o.due, asana: o.asana, decolino: o.decolino, memo: o.memo || '',
+    const body = JSON.stringify({ key: o.key, order: o.order, shop: o.shop, name: o.name, template: o.template, due: o.due, asana: o.asana, decolino: o.decolino, memo: ((o.memo || '') + (o.logo && window.__logoNote ? '\n' + window.__logoNote : '')).trim(),
       asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, force: !!o.force, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', logoPos: o.logoPos || null, back: o.back || '', backOpt: o.backOpt || {} },
       design: { name: o.fileBase + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
       designPreview: { name: o.fileBase + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
