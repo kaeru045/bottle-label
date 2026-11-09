@@ -324,7 +324,7 @@ window.importNew = async ({ days = 7, max = 3, dry = false } = {}) => {
   for (const p of list) {
     if (known.has(p.id)) continue;
     if (/完了|キャンセル/.test(p.st) || !p.od || new Date(p.od).getTime() < since) continue;
-    if (/^\[?A\d|テスト|test/i.test(p.title)) continue;
+    if (/\[A\d+-\d+\]|テスト|test/i.test(p.title)) continue; // [A…] は Asanaの自動生成（管理サイトから消えた案件を戻さない）
     const url = location.origin + '/projects/' + p.id;
     const cf = await confirmedAsset(url).catch(() => null);
     let cands = [];
@@ -336,7 +336,7 @@ window.importNew = async ({ days = 7, max = 3, dry = false } = {}) => {
     }
     cands = cands.filter(c => !assets.has(c.asset));
     if (!cands.length) { res.push(p.title + '：候補なし'); continue; }
-    const m = p.title.replace(/\s*-\s*誕生日.*$/, '').match(/^(\S+)\s+(.+)$/), shop = m ? m[1] : p.title, nm = m ? m[2] : p.title;
+    const tt = p.title.replace(/\s+-\s+\S+$/, '').trim(), m = tt.match(/^(\S+)\s+(.+)$/), shop = m ? m[1] : tt, nm = m ? m[2] : tt;
     for (const c of cands) {
       if (done >= max) { res.push(p.title + '：残り（次の回）'); break; }
       const name = nm + (cands.length > 1 ? '（案' + c.no + '）' : '');
