@@ -304,3 +304,48 @@ window.retryGenerate = async n => {
   btn.click(); await new Promise(r => setTimeout(r, 2000)); return { ok: true };
 };
 'loaded';
+// 2026-11-09 ユーザー指定：制作ツールで手作業で作られた案件（Asanaの自動生成を通っていないもの）も管理サイトに取り込む。
+// 案件一覧から、管理サイトにまだ無い案件（Decolinoリンクで判定）で、受注日が days 日以内・完了でないものを拾う。
+// 確定済みなら確定した案だけ、未確定なら今の候補（案1〜）を「名前（案N）」で登録する。同じ画像は二度登録しない（asset）。
+window.importNew = async ({ days = 7, max = 3, dry = false } = {}) => {
+  const src = await siteApi({ action: 'sources' }); if (!src.ok) return src;
+  const known = new Set(src.items.map(x => ((x.decolino || '').match(/project-[\w-]+/) || [''])[0]).filter(Boolean));
+  const assets = new Set(src.items.map(x => String(x.asset || '')));
+  const doc = new DOMParser().parseFromString(await fetch('/projects').then(r => r.text()), 'text/html');
+  const seen = new Set(), list = [];
+  for (const a of doc.querySelectorAll('a[href*="/projects/project-"]')) {
+    const id = (a.getAttribute('href').match(/project-[\w-]+/) || [''])[0]; if (!id || seen.has(id)) continue; seen.add(id);
+    const t = a.innerText || a.textContent || '', lines = t.split(/\n|(?=制作中|レビュー待ち|完了|テンプレート:|バージョン:|受注日:|納期:)/).map(s => s.trim()).filter(Boolean);
+    const title = lines[0] || '', st = (t.match(/制作中|レビュー待ち|確定|完了|キャンセル/) || [''])[0], tpl = (t.match(/テンプレート:\s*(E-?\d+)/) || [])[1] || '';
+    const od = (t.match(/受注日:\s*(\d{4})\.(\d{2})\.(\d{2})/) || []).slice(1).join('-'), due = (t.match(/納期:\s*(\d{4})\.(\d{2})\.(\d{2})/) || []).slice(1).join('-');
+    list.push({ id, title, st, tpl, od, due });
+  }
+  const since = Date.now() - days * 864e5, res = []; let done = 0;
+  for (const p of list) {
+    if (known.has(p.id)) continue;
+    if (/完了|キャンセル/.test(p.st) || !p.od || new Date(p.od).getTime() < since) continue;
+    if (/^\[?A\d|テスト|test/i.test(p.title)) continue;
+    const url = location.origin + '/projects/' + p.id;
+    const cf = await confirmedAsset(url).catch(() => null);
+    let cands = [];
+    if (cf) cands = [{ asset: cf.asset, no: 0 }];
+    else {
+      const g = new DOMParser().parseFromString(await fetch('/projects/' + p.id + '/generate').then(r => r.text()), 'text/html');
+      cands = [...g.querySelectorAll('img')].filter(i => /\/api\/assets\//.test(i.getAttribute('src') || '') && /^案\d+$/.test((i.alt || '').trim()))
+        .map(i => ({ asset: i.getAttribute('src').split('/').pop(), no: +i.alt.trim().slice(1) }));
+    }
+    cands = cands.filter(c => !assets.has(c.asset));
+    if (!cands.length) { res.push(p.title + '：候補なし'); continue; }
+    const m = p.title.replace(/\s*-\s*誕生日.*$/, '').match(/^(\S+)\s+(.+)$/), shop = m ? m[1] : p.title, nm = m ? m[2] : p.title;
+    for (const c of cands) {
+      if (done >= max) { res.push(p.title + '：残り（次の回）'); break; }
+      const name = nm + (cands.length > 1 ? '（案' + c.no + '）' : '');
+      if (dry) { res.push('[dry] ' + shop + ' ' + name + '（' + (p.tpl || '制作ツール') + '・' + p.st + '）'); done++; continue; }
+      const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: '/api/assets/' + c.asset, asset: c.asset, order: shop, shop, name, template: p.tpl || '制作ツール', due: p.due, asana: '', decolino: url,
+        spec: { seal: 'sl_lx_auto' }, checks: [], confirmed: cf ? c.asset : '', note: '制作ツールで作られた案件を自動で取り込み', memo: '制作ツールで手作業で作られた案件（' + p.st + '）を自動で取り込み',
+        fileBase: (shop + '_' + name + '_' + (p.tpl || '制作ツール')).replace(/[\\/:*?"<>|#]/g, '') });
+      res.push(shop + ' ' + name + '：' + (r.ok ? '登録' : '失敗 ' + (r.error || r.status))); assets.add(c.asset); done++;
+    }
+  }
+  return res.length ? res : ['新しい案件なし'];
+};
