@@ -9,7 +9,7 @@
             placement.json の大事な範囲の中央の真下、白い範囲の下端（y 1834）にそろえる
 --placement … place.py の出力先（placement.json）。省略時はデザイン画像と同じフォルダ
 --width  … 文字のまとまりの横幅（px）。この幅に収まるよう自動で大きさを決める。
-            ボトルの正面で全部見えるように、正面の幅（FRONT、820px）より広くはしない。
+            ボトルの正面で全部見えるように、正面の幅（FRONT、800px）より広くはしない。
             1行だと小さくなりすぎる長い文言（名前＋Happy Birthday など）は、空白のところで自動で2段にする（文字は変えない）。
             顔（placement.json の大事な範囲）にかかるときは、顔の下へずらし、入らなければ小さくする。（2026-11-05 ユーザー指定）
 --rotate … 傾き（度）
@@ -25,7 +25,7 @@ FONTDIR = os.environ.get('RESIZE_FONTS', os.path.join(HERE, 'fonts'))
 W, H = 2880, 2048
 SAFE = (268, 508, 2612, 1834)
 # ボトルを正面から見たときに見える横の範囲（common.FRONT に余白 30px）。文字は全部この中に入れる（2026-11-05 ユーザー指定）
-FRONT = (980, 1800)
+FRONT = (1040, 1840)  # 2026-11-10 中心を1440（仕上がり720）にそろえた（以前は 980〜1800 で左寄り）
 
 # 書体（@fontsource のパッケージ名）。jp＝日本語（ひらがな・カタカナ・漢字）も書ける
 FONTS = {'pirata': 'pirata-one', 'vibes': 'great-vibes', 'bangers': 'bangers', 'dancing': 'dancing-script',

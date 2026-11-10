@@ -19,6 +19,7 @@ ap.add_argument('--pos', choices=['center', 'left', 'right'], default='center');
 ap.add_argument('--zoom', type=float, default=1.0, help='大きさの調整（1.15＝15%大きく）。修正依頼「人物をもっと大きく」など')
 ap.add_argument('--size', choices=['リメイク', '小さめ', '標準', '大きめ', '特大'], default='標準', help='管理サイトの「人物の大きさ」（zoom に掛ける：リメイク＝最初のリサイズの大きさ（頭360px）・小さめ0.87・大きめ1.15・特大1.3）')
 ap.add_argument('--wide', action='store_true', help='content を白い範囲いっぱいに置く（以前の置き方。正面からは端が見えなくなる）')
+ap.add_argument('--no-refine', action='store_true', help='--box の自動補正をしない')
 ap.add_argument('--dx', type=float, default=0, help='左右に動かす量（仕上がりのpx、＋で右）'); ap.add_argument('--dy', type=float, default=0, help='上下に動かす量（仕上がりのpx、＋で下）')
 a = ap.parse_args()
 
@@ -27,9 +28,55 @@ if im is None:
     sys.exit('画像が読めません: ' + a.src)
 ih, iw = im.shape[:2]
 x0, y0, x1, y1 = [float(v) for v in a.box.split(',')]
-bw, bh = x1 - x0, y1 - y0
-if bw <= 0 or bh <= 0:
+if x1 <= x0 or y1 <= y0:
     sys.exit('--box が不正です')
+
+
+def refine(im, box, kind):
+    """目で決めた --box は数十px ずれることが多く、ボトル正面でロゴ・人物が左に寄って端が切れていた（2026-11-10 ユーザー指摘：ガルバジューシー）。
+    content：四角を少し広げた範囲で、ふちの色（背景）と違う画素の範囲に四角を合わせる。
+    head：四角の中に顔が1つだけ見つかれば、横の中心を顔の中心にする（高さ・幅はそのまま）。"""
+    x0, y0, x1, y1 = box; ih, iw = im.shape[:2]
+    if kind == 'content':
+        # 範囲を少しずつ広げ、ふちの色と違う画素（ロゴ・文字・人物）が範囲のふちに当たらなくなったところで、その画素の範囲に合わせる。
+        # 何度広げてもふちに当たる側は、背景に柄がある（または画像の端まで続く）ので元の四角のまま。
+        nb = list(box); hit = [True] * 4
+        for k in (0.08, 0.2, 0.35):
+            px, py = (x1 - x0) * k, (y1 - y0) * k
+            X0, Y0, X1, Y1 = int(max(0, x0 - px)), int(max(0, y0 - py)), int(min(iw, x1 + px)), int(min(ih, y1 + py))
+            reg = cv2.cvtColor(im[Y0:Y1, X0:X1], cv2.COLOR_BGR2LAB).astype(np.float32)
+            ring = np.concatenate([reg[:3].reshape(-1, 3), reg[-3:].reshape(-1, 3), reg[:, :3].reshape(-1, 3), reg[:, -3:].reshape(-1, 3)])
+            mask = (np.linalg.norm(reg - np.median(ring, 0), axis=2) > 60).astype(np.uint8)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+            if not (0.003 < mask.mean() < 0.9): return box, ''
+            ys, xs = np.nonzero(mask)
+            c = [np.percentile(xs, 0.3) + X0, np.percentile(ys, 0.3) + Y0, np.percentile(xs, 99.7) + X0, np.percentile(ys, 99.7) + Y0]
+            rw, rh = X1 - X0, Y1 - Y0
+            t = [c[0] - X0 < rw * 0.02 and X0 > 0, c[1] - Y0 < rh * 0.02 and Y0 > 0, X1 - c[2] < rw * 0.02 and X1 < iw, Y1 - c[3] < rh * 0.02 and Y1 < ih]
+            for i in range(4):
+                if hit[i] and not t[i]: nb[i] = c[i]; hit[i] = False
+            if not any(hit): break
+        # 画像の端まで広がった側は、背景の柄やふちの線を拾っていることが多いので、元の四角が端から離れていれば元のまま
+        for i, (edge, lim) in enumerate([(0, iw), (0, ih), (iw, iw), (ih, ih)]):
+            if abs(nb[i] - edge) <= 3 and abs(box[i] - edge) > lim * 0.03: nb[i] = box[i]
+        if nb[2] - nb[0] < (x1 - x0) * 0.3 or nb[3] - nb[1] < (y1 - y0) * 0.3: return box, ''
+        return tuple(nb), 'content'
+    try:
+        from check import faces  # 完成画像チェックと同じ顔検出（face-detection-tflite）
+        X0, Y0, X1, Y1 = int(max(0, x0)), int(max(0, y0)), int(min(iw, x1)), int(min(ih, y1 + (y1 - y0) * 0.1))
+        f = [q for q in (faces(im[Y0:Y1, X0:X1]) or []) if (q[2] - q[0]) > (x1 - x0) * 0.25]
+    except Exception:
+        return box, ''
+    if len(f) != 1: return box, ''
+    c = X0 + (f[0][0] + f[0][2]) / 2; half = (x1 - x0) / 2
+    if abs(c - (x0 + half)) > half * 0.5: return box, ''
+    return (c - half, y0, c + half, y1), 'face'
+
+
+refined = ''
+if not a.no_refine:
+    (x0, y0, x1, y1), refined = refine(im, (x0, y0, x1, y1), a.kind)
+bw, bh = x1 - x0, y1 - y0
 
 sw, sh = SAFE['x1'] - SAFE['x0'], SAFE['y1'] - SAFE['y0']
 HEAD_H = 605  # 仕上がりpxでの頭の高さ（標準）。2026-10-28 に 360 → 432、2026-10-29 に 432 → 605（さらに1.4倍、ユーザー指定）
@@ -78,8 +125,8 @@ cv2.imwrite(os.path.join(a.out, 'input.png'), inp)
 bx = [x + x0 * s, y + y0 * s, x + x1 * s, y + y1 * s]  # 大事な範囲（キャンバス座標）
 ng = [n for n, bad in [('上の帯', bx[1] < SAFE['y0']), ('下の帯', bx[3] > SAFE['y1']), ('左の帯', bx[0] < SAFE['x0']), ('右の帯', bx[2] > SAFE['x1'])] if bad]
 pl = {'canvas': [W, H], 's': s, 'x': x, 'y': y, 'dst': [dx0, dy0, dx1, dy1], 'box': [round(v) for v in bx], 'kind': a.kind, 'pos': a.pos,
-      'expand': {'left': dx0, 'top': dy0, 'right': W - dx1, 'bottom': H - dy1}, 'upscale': round(s, 3), 'ng': ng}
+      'expand': {'left': dx0, 'top': dy0, 'right': W - dx1, 'bottom': H - dy1}, 'upscale': round(s, 3), 'ng': ng, 'refined': refined, 'srcbox': [round(v) for v in (x0, y0, x1, y1)]}
 json.dump(pl, open(os.path.join(a.out, 'placement.json'), 'w'), ensure_ascii=False, indent=1)
-print(json.dumps({'input': [dx1 - dx0, dy1 - dy0], 'expand': pl['expand'], 'scale': round(s, 3), 'ng': ng}, ensure_ascii=False))
+print(json.dumps({'input': [dx1 - dx0, dy1 - dy0], 'expand': pl['expand'], 'scale': round(s, 3), 'ng': ng, 'refined': refined, 'box': pl['srcbox']}, ensure_ascii=False))
 if s > 3:
     print('注意：元画像が小さく、3倍以上に拡大しています（ぼやける可能性）', file=sys.stderr)
