@@ -5,6 +5,7 @@
 読み取り（生成状況・候補画像）は今までどおり action:'admin' / 'adminImg'（読み取り用トークン）。
 
 決まり（開発の方から）：
+- 同時に動かすのは1つだけ（2つ同時だと、片方の文字・画像でもう片方が生成されることがある）。
 - 生成は一度に1件ずつ。生成中（pending / running）に生成・文字の更新・画像の差し替えを送ると 409。
   必ず generated か failed になったのを確かめてから次を送る。
 - 文字・要望の更新は1本ずつ順番に。
@@ -29,10 +30,8 @@ def W(method, path, body=None):
 
 
 def latest():
-    r = api({'action': 'admin', 'path': '/ai-generations?orderId=%d' % ORDER}, timeout=150)
-    if not r.get('ok'): raise RuntimeError('読み取りAPI ' + str(r.get('status')) + ' ' + str(r.get('error'))[:150])
-    items = sorted(r['data'].get('items', []), key=lambda x: x.get('requestedAt', ''))
-    return items[-1] if items else None
+    it = sorted(items(), key=lambda x: x.get('requestedAt', ''))
+    return it[-1] if it else None
 
 
 def wait_idle(limit=900):
@@ -57,10 +56,36 @@ def send(method, path, body=None):
 
 
 def upload(path):
+    """参考画像を送る。PNG/JPEG/WebP 以外（HEIC・PSD など）や 18MB を超えるものは JPEG にしてから送る（APIの上限 20MB）"""
+    ext = path.lower().rsplit('.', 1)[-1]
+    if ext not in ('png', 'jpg', 'jpeg', 'webp') or os.path.getsize(path) > 18e6:
+        from PIL import Image
+        try:
+            import pillow_heif; pillow_heif.register_heif_opener()
+        except Exception: pass
+        im = Image.open(path); im.load()
+        if im.mode not in ('RGB', 'L'):
+            bg = Image.new('RGB', im.size, 'white'); im = im.convert('RGBA'); bg.paste(im, mask=im.split()[3]); im = bg
+        if max(im.size) > 4000: im.thumbnail((4000, 4000))
+        path2 = os.path.join('/tmp', 'hp_upload_%d.jpg' % os.getpid()); im.convert('RGB').save(path2, quality=92); path = path2
     ct = 'image/png' if path.lower().endswith('.png') else 'image/webp' if path.lower().endswith('.webp') else 'image/jpeg'
     r = api({'action': 'adminUpload', 'contentType': ct, 'filename': os.path.basename(path), 'data': base64.b64encode(open(path, 'rb').read()).decode()}, timeout=200)
     if not r.get('ok'): raise RuntimeError('画像アップロード失敗 ' + str(r.get('status') or '') + ' ' + str(r.get('error'))[:200])
     return r['mediaAssetId']
+
+
+def items():
+    """生成の一覧（読み取りAPI）。一時的な失敗は3回まで送り直す"""
+    for i in range(3):
+        try:
+            r = api({'action': 'admin', 'path': '/ai-generations?orderId=%d' % ORDER}, timeout=150)
+            if r.get('ok'): return r['data'].get('items', [])
+            err = '読み取りAPI ' + str(r.get('status')) + ' ' + str(r.get('error'))[:150]
+            if r.get('status') in (401, 403): raise RuntimeError(err + '（トークンが無効の可能性）')
+        except RuntimeError: raise
+        except Exception as e: err = str(e)
+        time.sleep(10 * (i + 1))
+    raise RuntimeError(err)
 
 
 def run_and_fetch(start, out):
@@ -69,7 +94,7 @@ def run_and_fetch(start, out):
     t0 = time.time()
     while True:
         time.sleep(15)
-        g = next((x for x in api({'action': 'admin', 'path': '/ai-generations?orderId=%d' % ORDER}, timeout=150)['data'].get('items', []) if x.get('id') == gid), None)
+        g = next((x for x in items() if x.get('id') == gid), None)
         st = (g or {}).get('status')
         if st == 'generated': break
         if st == 'failed': raise RuntimeError('生成に失敗しました（%s）' % gid)
