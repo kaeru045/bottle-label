@@ -265,7 +265,11 @@ window.makeProject = async o => {
   setV(q('#orderedAt'), o.ordered); if (o.due) setV(q('#dueDate'), o.due);
   setV(q('#champagneName'), o.name || '');
   setV(q('#champagneRequiredTexts'), o.texts || 'なし');
-  setV(q('#requestText'), o.request || '');
+  // 2026-11-11 ユーザー指定：名前・文字を見落とさず必ず入れる／装飾やデザイン以外の人物・画像を付け足さない（毎回、要望の最後に足す）
+  const must = [o.name, ...String(o.texts || '').split('\n')].map(x => String(x || '').trim()).filter(x => x && x !== 'なし');
+  const rules = (must.length ? '【必ず守る】次の名前・文字は1つも見落とさず、一字も変えずに全部入れてください：' + must.map(x => '「' + x + '」').join('') + '。' : '')
+    + '【必ず守る】依頼に無い人物・写真・イラストなど、装飾やデザイン以外の画像を付け足さないでください（人物は添付の写真の人だけ）。';
+  setV(q('#requestText'), [o.request || '', rules].filter(Boolean).join('\n'));
   await wait(500);
   [...document.querySelectorAll('button')].find(b => b.innerText.trim() === '案件を作成').click();
   for (let i = 0; i < 25 && /\/new$/.test(location.pathname); i++) await wait(1000);

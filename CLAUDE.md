@@ -40,3 +40,4 @@
 - 完成画像のチェック（tools/resize/check.py）：LINEで送る前に元画像との違い・顔の描き直し・生成部分を判定し、チェック画像と文を管理サイトに保存（2026-11-07 ユーザー指定）。
 - ネックシールの「自動」（`sl_lx_auto`、既定）：デザイン全体の平均の明るさが0.5以上ならホワイト、未満ならブラック（`sealAuto()`／`window.__sealAuto()`）。依頼に色の指定が無い・おまかせのときは自動処理もこれを使う。2026-11-01 ユーザー指定（薄い色のデザインは白、濃い色のデザインは黒）。
 - 裏の文字の効果（backOpt.effect：shadow／glow／emboss／3d、「+」で重ねる）と高級感の書体（shippori・oldmincho・kaisei・cormorant・bodoni・cinzelr・allura・parisienne・italiana・marcellus）を追加。2026-11-02 ユーザー指定（高級感のある文字・シャドーなどの効果）。
+- Decolinoの新規生成（tools/deco/check.js makeProject）は、要望の最後に毎回「名前・必ず入れる文字を1つも見落とさず全部入れる」「依頼に無い人物・写真・イラストなど装飾やデザイン以外の画像を付け足さない」を足す（2026-11-11 ユーザー指定）。スキル orishan-auto-resize・orishan-design-fix にも同じ2点。
