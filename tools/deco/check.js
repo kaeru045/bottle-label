@@ -182,6 +182,16 @@ window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
   }
   return res;
 };
+// 2026-11-12 ユーザー指定：再生成は毎回テンプレと写真から作り直すので、前の修正指示が抜けて元に戻ってしまう。
+// これまでの修正指示（メモの【vN 修正】修正指示「…」／【LINEで修正依頼】…）を古い順にまとめて、今回の指示と一緒に渡す。
+window.fixText = it => {
+  const memo = String(it.memo || ''), cur = String(it.fix || '').trim(), seen = new Set([cur]), prev = [];
+  const found = [];
+  for (const m of memo.matchAll(/修正指示「([\s\S]*?)」で作り直し/g)) found.push(m[1].trim());
+  found.reverse().forEach(t => { const k = t.replace(/^「|」$/g, '').trim(); if (k && !seen.has(k)) { seen.add(k); prev.push(k); } });
+  if (!prev.length) return cur;
+  return ('これまでの修正（すべてそのまま反映したまま作り直す。前の修正を元に戻さない）：\n' + prev.map((t, i) => (i + 1) + '. ' + t).join('\n') + '\n\n今回の修正：\n' + cur).slice(0, 2000);
+};
 window.setFix = async (order, fix, name) => siteApi({ action: 'setFix', order, name, fix });
 window.listFixes = async () => { const r = await siteApi({ action: 'fixes' }); return r.ok ? r.items : r; };
 window.__imgs = () => [...document.querySelectorAll('img')].filter(i => /\/api\/assets\//.test(i.src));
@@ -215,7 +225,7 @@ window.startFixAdmin = async (it, extra) => {
   const gens = (await __AJ('/api/ai-generations?orderId=' + t.oid)).items || [];
   if (gens.some(g => g.orderContentId === t.cid && /pending|running/.test(g.status))) return 'Decolinoで生成中のため待ってください';
   const at = Date.now();
-  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, it.fix + (extra ? '\n' + extra : ''));
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, fixText(it) + (extra ? '\n' + extra : ''));
   ta.dispatchEvent(new Event('input', { bubbles: true }));
   await new Promise(r => setTimeout(r, 600)); btn.click();
   await siteApi({ action: 'fixState', id: it.id, state: '生成中|' + at + '|adm:' + t.cid });
@@ -258,7 +268,7 @@ window.startFix = async (id, extra) => {
   const btn = [...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'この内容で再生成する');
   if (!ta || !btn) { await siteApi({ action: 'fixState', id, state: 'エラー:Decolinoの入力欄が見つかりません' }); return '入力欄なし'; }
   const before = __imgs().map(i => i.src.split('/').pop());
-  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, it.fix);
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, fixText(it));
   ta.dispatchEvent(new Event('input', { bubbles: true }));
   await new Promise(r => setTimeout(r, 600)); btn.click();
   await siteApi({ action: 'fixState', id, state: '生成中|' + Date.now() + '|' + before.join(',') });
