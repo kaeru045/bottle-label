@@ -185,8 +185,71 @@ window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
 window.setFix = async (order, fix, name) => siteApi({ action: 'setFix', order, name, fix });
 window.listFixes = async () => { const r = await siteApi({ action: 'fixes' }); return r.ok ? r.items : r; };
 window.__imgs = () => [...document.querySelectorAll('img')].filter(i => /\/api\/assets\//.test(i.src));
-window.startFix = async id => {
+// ---- 本番の管理画面（admin.reserve-viva-decolino.com/ai/<注文>/generate）の修正指示 ----
+// 2026-11-12 ユーザー指定：Decolinoの修正指示が本番の管理画面の案件にも来るので、同じ startFix / finishFix で扱う。
+// 画面：「追加の要望・フィードバック」欄＋「再生成する（1案）」。中身（content）ごとに生成があるので、
+// 確定した案（spec.confirmed＝'adm-<候補id>'）の中身、無ければ名前の「（2）」の枝番の中身を開く（?content=<id>）。
+// 新しい案は API（/api/ai-generations）で待ち、元画像IDは admin.js と同じ 'adm-<候補id>'（同じ案を二度登録しない）。
+window.__isAdmin = () => /admin\.reserve-viva-decolino\.com/.test(location.host);
+window.__AJ = u => fetch(u).then(r => r.ok ? r.json() : Promise.reject(new Error(u + ' ' + r.status)));
+window.adminFixTarget = async it => {
+  const oid = Number((String(it.decolino).match(/\/ai\/(\d+)/) || [])[1]); if (!oid) throw new Error('注文IDが読めません: ' + it.decolino);
+  const od = await __AJ('/api/orders/' + oid), gens = (await __AJ('/api/ai-generations?orderId=' + oid)).items || [];
+  let sp = null; try { sp = JSON.parse(it.spec || 'null'); } catch (e) {}
+  const cf = Number(String((sp && sp.confirmed) || '').replace(/^adm-/, '')) || 0; let cid = 0;
+  if (cf) for (const g of gens) { const cs = (await __AJ('/api/ai-generations/' + g.id + '/candidates')).items || []; if (cs.some(c => c.id === cf)) { cid = g.orderContentId; break; } }
+  const br = Number((String(it.name).match(/（(\d+)）/) || [])[1]);
+  if (!cid) cid = ((od.contents || []).find(c => c.branchNo === br) || (od.contents || [])[0] || {}).id;
+  return { oid, cid, od, url: location.origin + '/ai/' + oid + '/generate?content=' + cid };
+};
+window.startFixAdmin = async (it, extra) => {
+  const t = await adminFixTarget(it);
+  if (new URLSearchParams(location.search).get('content') !== String(t.cid) || !location.pathname.endsWith('/ai/' + t.oid + '/generate')) return '開き直してください: ' + t.url;
+  for (let i = 0; i < 10 && !document.querySelector('textarea[placeholder^="例: 背景をもう少し"]'); i++) await new Promise(r => setTimeout(r, 800));
+  const ta = document.querySelector('textarea[placeholder^="例: 背景をもう少し"]');
+  const btn = [...document.querySelectorAll('button')].find(b => /^再生成する（\d+案）$/.test(b.innerText.trim()));
+  if (!ta || !btn) return '入力欄なし';
+  const gens = (await __AJ('/api/ai-generations?orderId=' + t.oid)).items || [];
+  if (gens.some(g => g.orderContentId === t.cid && /pending|running/.test(g.status))) return 'Decolinoで生成中のため待ってください';
+  const at = Date.now();
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, it.fix + (extra ? '\n' + extra : ''));
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  await new Promise(r => setTimeout(r, 600)); btn.click();
+  await siteApi({ action: 'fixState', id: it.id, state: '生成中|' + at + '|adm:' + t.cid });
+  return '再生成を開始: ' + it.order + ' ' + it.name;
+};
+window.finishFixAdmin = async it => {
+  const [, at, bef] = String(it.state).split('|'); const t0 = Number(at || 0);
+  const t = await adminFixTarget(it), cid = Number(String(bef || '').replace(/^adm:/, '')) || t.cid;
+  let g = null;
+  for (let i = 0; i < 7; i++) {
+    const gens = ((await __AJ('/api/ai-generations?orderId=' + t.oid)).items || []).filter(x => x.orderContentId === cid && Date.parse(x.requestedAt) >= t0 - 60000);
+    g = gens.sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt))[0];
+    if (!g || !/pending|running/.test(g.status)) break; await new Promise(r => setTimeout(r, 5000));
+  }
+  if (!g || /pending|running/.test(g.status)) {
+    if (Date.now() - t0 > 20 * 60 * 1000) { await siteApi({ action: 'fixState', id: it.id, state: 'エラー:20分たっても生成されませんでした' }); return 'タイムアウト'; }
+    return g ? 'まだ生成中' : 'まだ生成中（生成が見つかりません）';
+  }
+  if (g.status !== 'generated') return '生成に失敗: ' + String(g.lastError && (g.lastError.message || JSON.stringify(g.lastError)) || g.status).slice(0, 200);
+  const cd = ((await __AJ('/api/ai-generations/' + g.id + '/candidates')).items || []).filter(x => x.imageUrl)[0];
+  if (!cd) return '生成に失敗: 候補画像なし';
+  let sp = null; try { sp = JSON.parse(it.spec || 'null'); } catch (e) {}
+  if (!sp) { await siteApi({ action: 'fixState', id: it.id, state: 'エラー:仕様が未登録です' }); return '仕様なし'; }
+  const c = (t.od.contents || []).find(x => x.id === cid) || {}, mat = (c.materialImages || []).find(m => m.previewUrl);
+  const asset = 'adm-' + cd.id;
+  const r = await registerToSite({ webappUrl: __W, key: __K, assetPath: cd.imageUrl, asset, order: it.order, name: it.name, decolino: it.decolino,
+    shop: sp.shop, template: sp.template, spec: sp.spec, checks: sp.checks, logo: sp.logo || '', logoPos: sp.logoPos || null, ...backOf(sp, it.id), confirmed: asset, fixDone: true,
+    srcUrl: mat && mat.previewUrl, tplUrl: cd.aiTemplateId ? '/api/ai-generations/templates/' + cd.aiTemplateId + '/image' : '',
+    note: '修正指示「' + it.fix + '」で作り直し（管理画面で再生成・未提案）',
+    fileBase: (it.order + '_' + it.name + '_v' + (it.version + 1)).replace(/[\\/:*?"<>|#]/g, '') });
+  if (!r.ok) await siteApi({ action: 'fixState', id: it.id, state: 'エラー:' + (r.error || r.status) });
+  return r.ok ? 'v' + r.version + ' に更新' : '失敗 ' + (r.error || r.status);
+};
+// extra：「生成に失敗」で押し直すときに修正指示のあとに足す文（管理画面のみ）
+window.startFix = async (id, extra) => {
   const it = (await listFixes()).find(x => x.id === id); if (!it) return '対象なし';
+  if (__isAdmin()) return startFixAdmin(it, extra);
   if (!/\/generate$/.test(location.pathname)) return 'generateページではありません: ' + location.pathname;
   const ta = document.querySelector('textarea[placeholder^="もっと金箔"]') || [...document.querySelectorAll('textarea')].find(t => /要望|フィードバック/.test(t.closest('div,section')?.innerText || ''));
   const btn = [...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'この内容で再生成する');
@@ -200,6 +263,8 @@ window.startFix = async id => {
 };
 window.finishFix = async id => {
   const it = (await listFixes()).find(x => x.id === id); if (!it) return '対象なし';
+  if (__isAdmin()) return finishFixAdmin(it);
+  if (/\|adm:/.test(String(it.state))) return '管理画面（admin.reserve-viva-decolino.com）の案件です。' + it.decolino + ' を開いてから実行してください';
   const [, at, bef] = String(it.state).split('|'); const before = (bef || '').split(',');
   for (let i = 0; i < 7 && /生成待機中|生成中/.test(document.body.innerText); i++) await new Promise(r => setTimeout(r, 5000));
   const fresh = __imgs().filter(i => /^案\d+$/.test((i.alt || '').trim()) && !before.includes(i.src.split('/').pop()));
