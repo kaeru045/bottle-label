@@ -42,3 +42,4 @@
 - 裏の文字の効果（backOpt.effect：shadow／glow／emboss／3d、「+」で重ねる）と高級感の書体（shippori・oldmincho・kaisei・cormorant・bodoni・cinzelr・allura・parisienne・italiana・marcellus）を追加。2026-11-02 ユーザー指定（高級感のある文字・シャドーなどの効果）。
 - Decolinoの新規生成（tools/deco/check.js makeProject）は、要望の最後に毎回「名前・必ず入れる文字を1つも見落とさず全部入れる」「依頼に無い人物・写真・イラストなど装飾やデザイン以外の画像を付け足さない」を足す（2026-11-11 ユーザー指定）。スキル orishan-auto-resize・orishan-design-fix にも同じ2点。
 - 修正指示の作り直し（check.js startFix／finishFix）は本番の管理画面（admin.reserve-viva-decolino.com/ai/<注文>/generate）の案件にも対応：中身は確定案 adm-<候補id> の content（無ければ名前の「（N）」）を `?content=` で開き、「追加の要望・フィードバック」＋「再生成する（1案）」、新しい案は /api/ai-generations で待って adm-<候補id> で登録。確定済み・「文章の指示は反映されません」（写真の人物そのままのテンプレ）は押さずに知らせる（2026-11-12 ユーザー指定、#04749 は触らない）。
+- チャットで頼まれたデザインの修正（2026-11-12 ユーザー指定）：その場ですぐ直し（即時修正。自動処理の修正依頼 fixreq には回さない）、修正案はチャットにだけ送る。管理サイトへの登録（register.py）とLINEへの送付はしない。ユーザーが「決定」と言った案だけを管理サイトに新しい版として登録する（登録するとLINEに流れる）。LINEグループからの修正は今までどおり（自動処理が作り直して登録・LINE送付）。
