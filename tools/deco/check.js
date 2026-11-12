@@ -209,6 +209,9 @@ window.startFixAdmin = async (it, extra) => {
   const ta = document.querySelector('textarea[placeholder^="例: 背景をもう少し"]');
   const btn = [...document.querySelectorAll('button')].find(b => /^再生成する（\d+案）$/.test(b.innerText.trim()));
   if (!ta || !btn) return '入力欄なし';
+  // 確定済みの注文・写真の人物をそのまま使うテンプレ（文章の指示が効かない）は押さずに知らせる（2026-11-12 ユーザー判断：#04749 は触らない）
+  if (/案\d+に確定/.test(document.body.innerText)) return '確定済みのため再生成しません（管理画面で確認してください）';
+  if (/文章の指示は反映されません/.test(document.body.innerText)) return '写真の人物をそのまま使うテンプレのため文章の修正指示は効きません（「人物を小さく」などのボタンで手作業）';
   const gens = (await __AJ('/api/ai-generations?orderId=' + t.oid)).items || [];
   if (gens.some(g => g.orderContentId === t.cid && /pending|running/.test(g.status))) return 'Decolinoで生成中のため待ってください';
   const at = Date.now();
