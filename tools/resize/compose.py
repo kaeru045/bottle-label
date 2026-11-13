@@ -16,10 +16,15 @@ from playwright.async_api import async_playwright
 
 ap = argparse.ArgumentParser()
 ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default=''); ap.add_argument('--back-opt', default='{}'); ap.add_argument('--out', required=True)
+ap.add_argument('--task', default='', help='Asanaのタスク {"name":..,"field":仕様欄,"notes":説明}。あれば spec_rules.py でリボン・デコ・タグなどの足りないオプションを足す（2026-11-13）')
 ap.add_argument('--tag-adj', default='', help='タグ内の画像の位置 {"x":左右,"y":上下,"z":大きさ%%}')
 ap.add_argument('--html', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'index.html'))
 a = ap.parse_args()
 spec, checks = json.loads(a.spec), json.loads(a.checks)
+why = []
+if a.task.strip():
+    from spec_rules import derive
+    _t = json.loads(a.task); spec, checks, why = derive(_t.get('name', ''), _t.get('field', ''), _t.get('notes', ''), spec, checks)
 os.makedirs(a.out, exist_ok=True)
 
 async def main():
@@ -83,7 +88,7 @@ async def main():
         for k, fn in [('submission', 'submission.jpg'), ('subPrev', 'submission_preview.jpg'), ('tag', 'tag.png'), ('design', 'design_back.jpg')]:
             if res.get(k):
                 open(os.path.join(a.out, fn), 'wb').write(base64.b64decode(res[k]))
-        info = {'tagName': res.get('tagName'), 'back': back, 'errors': errs}
+        info = {'tagName': res.get('tagName'), 'back': back, 'errors': errs, 'spec': spec, 'checks': checks, 'specWhy': why}
         json.dump(info, open(os.path.join(a.out, 'compose.json'), 'w'), ensure_ascii=False)
         print(json.dumps(info, ensure_ascii=False))
         await b.close()

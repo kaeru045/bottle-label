@@ -3,7 +3,7 @@
 
   python3 candidates.py known                     … 登録済みの候補ID一覧
   python3 candidates.py add ITEMS.json            … 候補を登録（Asanaの添付写真をダウンロードしてサムネと一緒に送る）。全自動：登録と同時に「リサイズ依頼」にする
-      ITEMS.json: [{"id":"<タスクgid>-<添付gid>","order","shop","name","due","asana","notes","spec":{...},"text":"<文字入れの文言（任意）>","photo_url","photo_name"}, ...]
+      ITEMS.json: [{"id":"<タスクgid>-<添付gid>","order","shop","name","due","asana","notes","spec":{...},"text":"<文字入れの文言（任意）>","photo_url","photo_name","task":{"name":タスク名,"field":仕様欄,"notes":説明}}, ...]（task があれば spec_rules.py でリボン・デコ・タグなどを足す）
   python3 candidates.py queue                     … 「リサイズする」が押された候補（状態「文字案決定」＝文字案が選ばれたものも）
   python3 candidates.py chosen ID OUTPATH         … 選ばれた文字案のデザイン画像
   python3 candidates.py src ID OUTPATH            … 候補の元画像をダウンロード
@@ -43,6 +43,12 @@ elif cmd == 'add':
     for it in items:
         if it['id'] in known: continue
         try:
+            if it.get('task'):  # 2026-11-13：リボン・デコ・タグなどのオプションを Asana の文面から足す（spec_rules.py）
+                from spec_rules import derive
+                t = it.pop('task'); sp = it.get('spec') or {}
+                base, ch = (sp.get('spec', {}), sp.get('checks', [])) if 'spec' in sp else (sp, it.get('checks', []))
+                base, ch, _ = derive(t.get('name', ''), t.get('field', ''), t.get('notes', ''), base, ch)
+                it['spec'] = {'spec': base, 'checks': ch}
             im = load_url(it.pop('photo_url')); stem = os.path.splitext(it.pop('photo_name', 'photo'))[0]
             from ready import check
             ok, why = check(im.shape[1], im.shape[0])

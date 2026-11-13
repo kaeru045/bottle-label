@@ -42,6 +42,7 @@ def finish(cand_path, cand_id, a, fix=''):
     d = a.out
     to_jpg(cand_path, os.path.join(d, 'design.jpg'))
     c = [PY, os.path.join(RZ, 'compose.py'), os.path.join(d, 'design.jpg'), '--spec', a.spec, '--checks', a.checks, '--out', d]
+    if getattr(a, 'task', ''): c += ['--task', a.task]  # リボン・デコ・タグなどを Asana の文面から足す（spec_rules.py）
     if a.back: c += ['--back', a.back, '--back-opt', a.back_opt or '{}']
     subprocess.run(c, check=True)
     if getattr(a, 'no_register', False): print('登録しない（--no-register）: ' + d); return
@@ -103,7 +104,7 @@ def main():
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest='cmd', required=True)
     m = sub.add_parser('make')
     for k in ['photo', 'out']: m.add_argument('--' + k, required=True)
-    for k in ['text', 'hint', 'order', 'shop', 'name', 'due', 'asana', 'back', 'file-base']: m.add_argument('--' + k, default='')
+    for k in ['text', 'hint', 'order', 'shop', 'name', 'due', 'asana', 'back', 'file-base', 'task']: m.add_argument('--' + k, default='')
     m.add_argument('--spec', default='{"seal":"sl_lx_auto"}'); m.add_argument('--checks', default='[]'); m.add_argument('--back-opt', default='{}')
     m.add_argument('--no-register', action='store_true', help='提出用まで作って登録しない（チャットの修正案）'); m.add_argument('--count', type=int, default=1); m.add_argument('--pick', type=int, default=1)
     f = sub.add_parser('fix'); f.add_argument('--id', required=True); f.add_argument('--out', required=True)
