@@ -48,7 +48,7 @@ def finish(cand_path, cand_id, a, fix=''):
     if getattr(a, 'no_register', False): print('登録しない（--no-register）: ' + d); return
     r = [PY, os.path.join(RZ, 'register.py'), '--dir', d, '--order', a.order, '--shop', a.shop, '--name', a.name, '--due', a.due, '--asana', a.asana,
          '--spec', a.spec, '--checks', a.checks, '--template', 'おまかせ', '--asset', 'hp-%s' % cand_id,
-         '--base-spec', json.dumps({'confirmed': 'hp-%s' % cand_id, 'logo': ''}), '--file-base', a.file_base or '%s_%s_おまかせ' % (a.shop, a.name),
+         '--base-spec', json.dumps({'confirmed': 'hp-%s' % cand_id, 'logo': '', 'hp': getattr(a, 'hp', None) or {}}, ensure_ascii=False), '--file-base', a.file_base or '%s_%s_おまかせ' % (a.shop, a.name),
          '--memo', 'おまかせ：HPの完全オリジナルで自動生成（テスト注文#04738・未提案）。' + (a.hint and ('雰囲気：' + a.hint) or '')]
     if a.back: r += ['--back', a.back, '--back-opt', a.back_opt or '{}']
     if fix: r += ['--fix', fix]
@@ -62,13 +62,12 @@ def make(a):
     if src.startswith('http'):
         src = os.path.join(a.out, 'src_raw'); urllib.request.urlretrieve(a.photo, src)
     ph = fit_photo(src, a.out)
-    hp_api.wait_idle()
     t = split2(a.text)
-    hp_api.send('PATCH', '/brief', {'requiredTexts': '\n'.join(t) if t else 'なし', 'requestText': build(a.text, 'omakase', a.hint)
-                + '\n・名前・必ず入れる文字は1つも見落とさず全部入れる。\n・依頼に無い人物・写真・イラストなど、装飾やデザイン以外の画像を付け足さない。'})
+    req = build(a.text, 'omakase', a.hint) + '\n・名前・必ず入れる文字は1つも見落とさず全部入れる。\n・依頼に無い人物・写真・イラストなど、装飾やデザイン以外の画像を付け足さない。'
     mid = hp_api.upload(ph)
-    hp_api.send('PUT', '/reference-images', {'items': [{'mediaAssetId': mid, 'kind': 'photo'}]})
-    st = hp_api.send('POST', '/generations', {'candidateCount': a.count, 'kind': 'initial', 'generationMode': 'original'})
+    # 修正の作り直し（refine）でも同じ文字・写真を入れ直せるよう、仕様に残す（2026-11-13 別の案件の顔・文字が入った事故の対策）
+    a.hp = {'text': '\n'.join(t) if t else 'なし', 'request': req, 'media': mid}
+    st = hp_api.start_job('/generations', {'candidateCount': a.count, 'kind': 'initial', 'generationMode': 'original'}, a.hp['text'], req, mid)
     gid, res = hp_api.run_and_fetch(st, os.path.join(a.out, 'cands'))
     if not res: raise RuntimeError('候補画像がありません')
     print(json.dumps({'generation': gid, 'candidates': [{'id': i, 'path': p} for i, p in res]}, ensure_ascii=False))
@@ -80,7 +79,7 @@ def fix(a):
     os.makedirs(a.out, exist_ok=True)
     it = next((x for x in (api({'action': 'fixes', 'omakase': True}).get('items') or []) if x['id'] == a.id), None)
     if not it: raise SystemExit('修正依頼が見つかりません: ' + a.id)
-    sp = json.loads(it.get('spec') or '{}'); cand = str(sp.get('confirmed', '')).replace('hp-', '')
+    sp = json.loads(it.get('spec') or '{}'); cand = str(a.base or sp.get('confirmed', '')).replace('hp-', '')
     if not cand.isdigit():
         api({'action': 'fixState', 'id': a.id, 'state': 'エラー:元の候補（hp-）が分かりません'}); raise SystemExit('候補不明')
     # これまでの修正指示もまとめて渡す（check.js fixText と同じ考え方。refine は今の候補が土台なので、今回の指示を主にする）
@@ -88,13 +87,20 @@ def fix(a):
              '今回の修正：' + str(it['fix']).strip())
     api({'action': 'fixState', 'id': a.id, 'state': '生成中|%d|' % int(__import__('time').time() * 1000)})
     try:
-        hp_api.wait_idle()
-        st = hp_api.send('POST', '/refine', {'bases': [{'candidateId': int(cand), 'instruction': instr}], 'imageCount': 1})
+        hp = sp.get('hp') or {}
+        if a.photo or a.text:  # 仕様に文字・写真が無い古い案件は、引数で渡す
+            src = a.photo
+            if src and src.startswith('http'): src = os.path.join(a.out, 'src_raw'); urllib.request.urlretrieve(a.photo, src)
+            hp = {'text': '\n'.join(split2(a.text)) or hp.get('text') or 'なし', 'request': hp.get('request') or '',
+                  'media': hp_api.upload(fit_photo(src, a.out)) if src else hp.get('media')}
+        if not hp.get('media') or not hp.get('text'):
+            raise RuntimeError('この案件の文字・写真が仕様に無いので作り直せません（別の案件の顔・文字が入るのを防ぐため止めました）。--photo と --text を付けて実行してください')
+        st = hp_api.start_job('/refine', {'bases': [{'candidateId': int(cand), 'instruction': instr}], 'imageCount': 1}, hp['text'], hp.get('request', ''), hp['media'])
         gid, res = hp_api.run_and_fetch(st, os.path.join(a.out, 'cands'))
         if not res: raise RuntimeError('候補画像がありません')
         ns = argparse.Namespace(out=a.out, spec=json.dumps(sp.get('spec') or {}), checks=json.dumps(sp.get('checks') or []), back=sp.get('back') or '',
                                 back_opt=json.dumps(sp.get('backOpt') or {}), order=it['order'], shop=it.get('shop') or sp.get('shop') or '', name=it['name'],
-                                due=it.get('due') or '', asana=it.get('asana') or '', file_base='%s_%s_おまかせ_v%d' % (it.get('shop') or '', it['name'], int(it.get('version') or 1) + 1), hint='')
+                                due=it.get('due') or '', asana=it.get('asana') or '', file_base='%s_%s_おまかせ_v%d' % (it.get('shop') or '', it['name'], int(it.get('version') or 1) + 1), hint='', hp=hp)
         finish(res[0][1], res[0][0], ns, fix=str(it['fix']))
     except Exception as e:
         api({'action': 'fixState', 'id': a.id, 'state': 'エラー:' + str(e)[:200]}); raise
@@ -108,6 +114,8 @@ def main():
     m.add_argument('--spec', default='{"seal":"sl_lx_auto"}'); m.add_argument('--checks', default='[]'); m.add_argument('--back-opt', default='{}')
     m.add_argument('--no-register', action='store_true', help='提出用まで作って登録しない（チャットの修正案）'); m.add_argument('--count', type=int, default=1); m.add_argument('--pick', type=int, default=1)
     f = sub.add_parser('fix'); f.add_argument('--id', required=True); f.add_argument('--out', required=True)
+    f.add_argument('--photo', default='', help='仕様に写真が無い古い案件の写真（Asanaの download_url かパス）'); f.add_argument('--text', default='', help='その案件の文字（「|」区切り）')
+    f.add_argument('--base', type=int, default=0, help='作り直しの土台にするHP候補id（省くと今の候補）')
     a = ap.parse_args()
     try:
         make(a) if a.cmd == 'make' else fix(a)

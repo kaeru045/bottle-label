@@ -13,7 +13,8 @@
 
   python3 hp_api.py status
   python3 hp_api.py gen --text 'カイト|BIRTHDAY' --bg omakase --hint '黒とシルバー' --photo src.jpg --out DIR [--count 3]
-  python3 hp_api.py refine --cand 1294 --fix 'カイトBIRTHDAY' --out DIR [--layout '{"textSize":"smaller"}']
+  python3 hp_api.py refine --cand 1294 --photo src.jpg --text 'カイト|BIRTHDAY' --fix 'カイトBIRTHDAY' --out DIR [--layout '{"textSize":"smaller"}']
+  ※ 生成・作り直しは必ず start_job() で、その案件の文字・参考画像を入れ直してから始める（別の案件の顔・文字が入る事故の対策）
 """
 import argparse, base64, json, os, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -88,6 +89,21 @@ def items():
     raise RuntimeError(err)
 
 
+def start_job(path, body, text=None, request=None, media=None, kind='photo'):
+    """生成・作り直しを始める（2026-11-13 Twilight Rouge にカエデの顔・文字が入った事故の対策）。
+    HPのテスト注文は「文字・要望（brief）」と「参考画像」を注文全体で1つだけ持ち、生成も作り直し（refine）もその時点の中身を使う。
+    なので、どの生成も直前に必ず自分の文字・要望・参考画像を入れ直してから始める（前の案件のものを絶対に使わない）。
+    アップロードなど時間のかかる処理は先に済ませ、ここでは「待つ → 入れ直す → 始める」を続けて行う。"""
+    if text is None or media is None: raise RuntimeError('文字と参考画像（mediaAssetId）を指定してください（前の案件の文字・写真が入る事故を防ぐため）')
+    wait_idle()
+    send('PATCH', '/brief', {'requiredTexts': text or 'なし', 'requestText': request or ''})
+    send('PUT', '/reference-images', {'items': [{'mediaAssetId': media, 'kind': kind}]})
+    g = latest()
+    if g and g.get('status') in ('pending', 'running'):  # 入れ直している間にほかの処理が始めた→入れ直しからやり直す
+        return start_job(path, body, text, request, media, kind)
+    return send('POST', path, body)
+
+
 def run_and_fetch(start, out):
     """生成を始めて（start は応答）、終わるまで待ち、候補画像を out に保存して [(候補id, パス)] を返す"""
     gid = start['id']
@@ -114,24 +130,23 @@ def main():
     g.add_argument('--photo', required=True); g.add_argument('--kind', default='photo'); g.add_argument('--count', type=int, default=3); g.add_argument('--out', required=True)
     g.add_argument('--layout', default=''); g.add_argument('--instruction', default='')
     f = sub.add_parser('refine'); f.add_argument('--cand', type=int, required=True); f.add_argument('--fix', default=''); f.add_argument('--instruction', default='')
+    f.add_argument('--photo', required=True, help='その案件の写真（参考画像を必ず入れ直す）'); f.add_argument('--text', required=True, help='その案件の文字（「|」区切り）')
+    f.add_argument('--request', default=''); f.add_argument('--kind', default='photo')
     f.add_argument('--layout', default=''); f.add_argument('--count', type=int, default=3); f.add_argument('--out', required=True)
     a = ap.parse_args()
     if a.cmd == 'status':
         print(json.dumps({'latest': latest(), 'brief': W('GET', '/brief')}, ensure_ascii=False, indent=1)[:2000]); return
-    wait_idle()
+    t = split2(a.text)
+    mid = upload(a.photo)
     if a.cmd == 'gen':
-        t = split2(a.text)
-        send('PATCH', '/brief', {'requiredTexts': '\n'.join(t) if t else 'なし', 'requestText': build(a.text, a.bg, a.hint)})
-        mid = upload(a.photo)
-        send('PUT', '/reference-images', {'items': [{'mediaAssetId': mid, 'kind': a.kind}]})
         body = {'candidateCount': a.count, 'kind': 'initial', 'generationMode': 'original'}
         if a.instruction: body['instruction'] = a.instruction
         if a.layout: body['layoutAdjust'] = json.loads(a.layout)
-        st = send('POST', '/generations', body)
+        st = start_job('/generations', body, '\n'.join(t) if t else 'なし', build(a.text, a.bg, a.hint), mid, a.kind)
     else:
         b = {'candidateId': a.cand, 'instruction': a.instruction or fix_prompt(a.fix)}
         if a.layout: b['layoutAdjust'] = json.loads(a.layout)
-        st = send('POST', '/refine', {'bases': [b], 'imageCount': a.count})
+        st = start_job('/refine', {'bases': [b], 'imageCount': a.count}, '\n'.join(t) if t else 'なし', a.request or '', mid, a.kind)
     gid, res = run_and_fetch(st, a.out)
     print(json.dumps({'generation': gid, 'candidates': [{'id': i, 'path': p} for i, p in res]}, ensure_ascii=False))
 
