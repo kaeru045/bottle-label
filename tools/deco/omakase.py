@@ -107,7 +107,15 @@ def main():
     m.add_argument('--count', type=int, default=1); m.add_argument('--pick', type=int, default=1)
     f = sub.add_parser('fix'); f.add_argument('--id', required=True); f.add_argument('--out', required=True)
     a = ap.parse_args()
-    make(a) if a.cmd == 'make' else fix(a)
+    try:
+        make(a) if a.cmd == 'make' else fix(a)
+    except SystemExit:
+        raise
+    except Exception as e:  # 2026-11-13 ユーザー指定：作れなかった理由はLINEへ（修正の失敗は fixState エラーで管理サイトが送る）
+        if a.cmd == 'make':
+            try: api({'action': 'failNote', 'text': '⚠️ デザインを作れませんでした（おまかせ）：%s %s\n理由：%s' % (a.shop, a.name, str(e)[:200]), 'key2': 'om' + a.asana + str(e)[:80]})
+            except Exception: pass
+        raise
 
 
 if __name__ == '__main__':

@@ -262,7 +262,11 @@ window.finishFixAdmin = async it => {
 // extra：「生成に失敗」で押し直すときに修正指示のあとに足す文（管理画面のみ）
 window.startFix = async (id, extra) => {
   const it = (await listFixes()).find(x => x.id === id); if (!it) return '対象なし';
-  if (__isAdmin()) return startFixAdmin(it, extra);
+  if (__isAdmin()) {
+    const r = await startFixAdmin(it, extra);
+    if (/^(確定済み|写真の人物|入力欄なし)/.test(String(r))) await failNote('⚠️ 修正できませんでした：' + it.order + ' ' + it.name + '\n修正指示『' + String(it.fix || '').slice(0, 60) + '』\n理由：' + r, 'sfa' + it.id + r);
+    return r;
+  }
   if (!/\/generate$/.test(location.pathname)) return 'generateページではありません: ' + location.pathname;
   const ta = document.querySelector('textarea[placeholder^="もっと金箔"]') || [...document.querySelectorAll('textarea')].find(t => /要望|フィードバック/.test(t.closest('div,section')?.innerText || ''));
   const btn = [...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'この内容で再生成する');
@@ -322,6 +326,7 @@ window.fixPhotos = async () => {
     const s = await fitPhoto(await fetch(img.src).then(r => r.blob()));
     if (s.changed) { dt.items.add(new File([s.blob], name.replace(/\.\w+$/, '') + '_s.jpg', { type: 'image/jpeg' })); drop.push(d); }
   }
+  try { sessionStorage.setItem('fp:' + __projKey(), '1'); } catch (e) {}
   if (!dt.files.length) return { ok: false, error: '縮小が必要な写真なし' };
   const inp = document.querySelector('input[type=file][name=files]'); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true }));
   await wait(3000); for (const d of drop) { d.click(); await wait(1500); }
@@ -329,7 +334,7 @@ window.fixPhotos = async () => {
   for (let i = 0; i < 25 && !/generate$/.test(location.pathname); i++) await wait(1000);
   return { ok: /generate$/.test(location.pathname), replaced: dt.files.length };
 };
-window.makeProject = async o => {
+window.makeProject0 = async o => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   if (!/\/projects\/new$/.test(location.pathname)) return { ok: false, error: '/projects/new を開いてから実行してください' };
   for (let i = 0; i < 12 && !document.querySelector('#customerName'); i++) await wait(800);
@@ -370,15 +375,31 @@ window.makeProject = async o => {
   for (let i = 0; i < 20 && !/generate$/.test(location.pathname); i++) await wait(1000);
   return { ok: /generate$/.test(location.pathname), project: location.href.replace(/\/(order|generate)$/, ''), template: o.template };
 };
+// 2026-11-13 ユーザー指定：作れなかった理由はそのたびにLINEグループへ（管理サイト failNote、同じ内容は6時間に1回）
+window.failNote = (text, key2) => siteApi({ action: 'failNote', text, key2: key2 || text }).catch(() => null);
+window.__projKey = () => location.pathname.replace(/\/(order|generate|refine|export)$/, '');
+window.makeProject = async o => {
+  const r = await makeProject0(o);
+  if (r && !r.ok && !/開いてから|案件を作れませんでした/.test(r.error || '')) await failNote('⚠️ デザインを作れませんでした：' + String(o.title || '').trim() + '\n理由：' + r.error, 'mk' + o.tag + r.error);
+  return r;
+};
 window.waitResult = async () => {
   for (let i = 0; i < 7 && /生成待機中|生成中/.test(document.body.innerText); i++) await new Promise(r => setTimeout(r, 5000));
-  const f = document.body.innerText.match(/生成に失敗[^\n]*/); if (f) return { state: 'failed', msg: f[0].slice(0, 80) };
+  const f = document.body.innerText.match(/生成に失敗[^\n]*/);
+  if (f) {
+    const msg = f[0].slice(0, 160), name = document.title.replace(/[｜|].*$/, '').trim(), k = __projKey();
+    let fp = false; try { fp = !!sessionStorage.getItem('fp:' + k); } catch (e) {}
+    if (/credits|429/i.test(msg)) await failNote('⚠️ Decolinoの生成クレジットが切れています（デザインを作れません）\n' + msg, 'credits');
+    else if ((window.__rgN || 0) >= 2 || (fp && /Invalid input image|image file/i.test(msg))) await failNote('⚠️ デザインを作れませんでした：' + name + '\n理由：' + msg + ((window.__rgN || 0) >= 2 ? '（3回作り直しても失敗）' : '（写真を縮小しても読めない）'), 'wr' + k + msg);
+    return { state: 'failed', msg: msg.slice(0, 80) };
+  }
   const img = [...document.querySelectorAll('img')].find(i => /\/api\/assets\//.test(i.src) && /^案\d+$/.test((i.alt || '').trim()));
   if (img) return { state: 'done', asset: img.src.split('/').pop() };
   return { state: 'generating' };
 };
 // 安全フィルターなどで失敗したとき、同じ内容で作り直す（n=2 のときは追加の要望に穏やかな指示を入れる）
 window.retryGenerate = async n => {
+  window.__rgN = Math.max(window.__rgN || 0, n || 1);
   const ta = document.querySelector('textarea[placeholder^="もっと金箔"]');
   if (ta && n >= 2) { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, '人物は写真の雰囲気のまま、上品で落ち着いた仕上がりに'); ta.dispatchEvent(new Event('input', { bubbles: true })); await new Promise(r => setTimeout(r, 600)); }
   const btn = [...document.querySelectorAll('button')].find(b => b.innerText.trim() === 'この内容で再生成する');
