@@ -46,7 +46,7 @@ def size_rule(t):
 
 def build(text='', bg='keep', hint=''):
     """text：入れる文字（そのまま・一字も変えない。2行なら「|」か改行）。bg：keep＝元の背景をそのまま自然に広げる／omakase＝背景お任せ。hint：背景の色や雰囲気（Asanaの指定など）"""
-    lines = ['リサイズ用。']
+    lines = ['おまかせのオリジナルデザイン（新しく作る）。' if bg == 'omakase' else 'リサイズ用。']
     lines.append('・人物は本人写真のまま使う。顔・髪型・表情・服装・ポーズ・体型を描き直さない、足さない。人物を増やさない。')
     lines.append('・' + FORMAT)
     lines.append('・人物は横の中央。頭のてっぺんからあごまでが画像の高さの約3割の大きさ。')

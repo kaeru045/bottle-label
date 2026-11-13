@@ -17,6 +17,7 @@ ap.add_argument('--back-opt', default='{}', help='裏の文字の向き・書体
 ap.add_argument('--template', default='リサイズ', help='テンプレ欄（Decolino・HPの案件を直すときは元のテンプレのまま）')
 ap.add_argument('--base-spec', default='', help='元の案件の「仕様」（design.py get の info.json の 仕様）。confirmed・logo などを引き継ぐ')
 ap.add_argument('--decolino', default='', help='Decolino欄（元の案件のURLのまま）')
+ap.add_argument('--asset', default='', help='元画像ID（おまかせのHP候補は hp-<候補id>）')
 ap.add_argument('--fix', default='', help='修正依頼で作り直したときの修正内容（修正指示を消して「修正済み」にする）')
 ap.add_argument('--memo', default='Asanaのリサイズ依頼から自動作成（Adobe生成拡張で背景を広げ、元の画像は描き直していません）')
 a = ap.parse_args()
@@ -32,7 +33,7 @@ tagp = os.path.join(d, 'tag.png')
 spec, checks = json.loads(a.spec), json.loads(a.checks)
 rz = a.template == 'リサイズ'
 body = {'order': a.order, 'shop': a.shop, 'name': a.name, 'template': a.template, 'due': a.due, 'asana': a.asana, 'decolino': a.decolino, 'memo': a.memo,
-        'asset': '', 'note': ('修正指示「' + a.fix + '」で' + ('リサイズを' if rz else '') + '作り直し') if a.fix else ('リサイズで作り直し' if rz else '作り直し'), 'fixDone': bool(a.fix), 'spec': {**(json.loads(a.base_spec) if a.base_spec else {'confirmed': '', 'logo': ''}), 'spec': spec, 'checks': checks, 'shop': a.shop, 'template': a.template, 'back': a.back, 'backOpt': json.loads(a.back_opt or '{}')},
+        'asset': a.asset, 'note': ('修正指示「' + a.fix + '」で' + ('リサイズを' if rz else '') + '作り直し') if a.fix else ('リサイズで作り直し' if rz else '作り直し'), 'fixDone': bool(a.fix), 'spec': {**(json.loads(a.base_spec) if a.base_spec else {'confirmed': '', 'logo': ''}), 'spec': spec, 'checks': checks, 'shop': a.shop, 'template': a.template, 'back': a.back, 'backOpt': json.loads(a.back_opt or '{}')},
         'design': b64file(dj, base + 'デザイン画像.jpg'),
         'submission': b64file(os.path.join(d, 'submission.jpg'), base + '提出用.jpg'),
         'designPreview': b64file(dp, base + 'デザイン_プレビュー.jpg'),
