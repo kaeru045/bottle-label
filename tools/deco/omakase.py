@@ -44,6 +44,7 @@ def finish(cand_path, cand_id, a, fix=''):
     c = [PY, os.path.join(RZ, 'compose.py'), os.path.join(d, 'design.jpg'), '--spec', a.spec, '--checks', a.checks, '--out', d]
     if a.back: c += ['--back', a.back, '--back-opt', a.back_opt or '{}']
     subprocess.run(c, check=True)
+    if getattr(a, 'no_register', False): print('登録しない（--no-register）: ' + d); return
     r = [PY, os.path.join(RZ, 'register.py'), '--dir', d, '--order', a.order, '--shop', a.shop, '--name', a.name, '--due', a.due, '--asana', a.asana,
          '--spec', a.spec, '--checks', a.checks, '--template', 'おまかせ', '--asset', 'hp-%s' % cand_id,
          '--base-spec', json.dumps({'confirmed': 'hp-%s' % cand_id, 'logo': ''}), '--file-base', a.file_base or '%s_%s_おまかせ' % (a.shop, a.name),
@@ -104,7 +105,7 @@ def main():
     for k in ['photo', 'out']: m.add_argument('--' + k, required=True)
     for k in ['text', 'hint', 'order', 'shop', 'name', 'due', 'asana', 'back', 'file-base']: m.add_argument('--' + k, default='')
     m.add_argument('--spec', default='{"seal":"sl_lx_auto"}'); m.add_argument('--checks', default='[]'); m.add_argument('--back-opt', default='{}')
-    m.add_argument('--count', type=int, default=1); m.add_argument('--pick', type=int, default=1)
+    m.add_argument('--no-register', action='store_true', help='提出用まで作って登録しない（チャットの修正案）'); m.add_argument('--count', type=int, default=1); m.add_argument('--pick', type=int, default=1)
     f = sub.add_parser('fix'); f.add_argument('--id', required=True); f.add_argument('--out', required=True)
     a = ap.parse_args()
     try:
