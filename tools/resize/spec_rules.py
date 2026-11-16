@@ -61,7 +61,7 @@ def derive(name='', field='', notes='', spec=None, checks=None):
         c = c or 'orig'
         if spec.get('ribbon') != c: spec['ribbon'] = c; why.append('リボン：' + c)
     # デコ
-    if re.search(r'デコ(?!物|レーションなし)', body) or re.search(r'デコ(?!物)', name or ''):
+    if re.search(r'デコ(?!物|レーションなし|\s*(なし|無し))', body) or re.search(r'デコ(?!物)', name or ''):
         if re.search(r'ネック(に|の)?デコ|デコ[（(]?ネック', allt):
             if 'decoNeck' not in checks: checks.append('decoNeck'); why.append('デコ：ネック')
         if 'decoChira' not in checks: checks.append('decoChira'); why.append('デコ：チラシ')
