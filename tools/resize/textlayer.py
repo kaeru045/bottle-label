@@ -97,6 +97,10 @@ STYLES = {
     'allura': dict(jp='ゴールド筆記体', mood='高級・上品・女性・誕生日・ピンクや黒', font='allura', weight=400,
                    fill=G('#fffaf0', '#f3d58b 50%', '#c99a3e'), stroke='', strokew=0,
                    shadow=SH('0 .02em 0 rgba(80,50,10,.9)', '0 0 .12em rgba(255,230,170,.75)', '0 .08em .2em rgba(0,0,0,.55)'), spacing='0', line=0.95),
+    # 2026-11-16 ダイヤモンド カエデ：紺×銀のデザインに合う筆記体（金の光・黒い影で文字のまわりが暗い四角に見えたため）
+    'allurasilver': dict(jp='シルバー筆記体', mood='高級・上品・クール・紺や青・銀', font='allura', weight=400,
+                         fill=G('#ffffff', '#dfe8f5 50%', '#a9bcd6'), stroke='', strokew=0,
+                         shadow=SH('0 .02em 0 rgba(20,35,70,.8)', '0 0 .10em rgba(190,215,255,.85)', '0 0 .30em rgba(120,170,255,.45)'), spacing='0', line=0.95),
     'rosegold': dict(jp='ローズゴールド', mood='高級・ピンク・女性・キャバ・ゆめかわ大人', font='parisienne', weight=400,
                      fill=G('#fff1ee', '#f2b8a8 45%', '#b9705e'), stroke='', strokew=0,
                      shadow=SH('0 .02em 0 rgba(90,35,30,.85)', '0 0 .14em rgba(255,200,190,.7)', '0 .08em .2em rgba(0,0,0,.5)'), spacing='0', line=0.95),
