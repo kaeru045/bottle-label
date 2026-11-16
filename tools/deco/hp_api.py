@@ -16,7 +16,7 @@
   python3 hp_api.py refine --cand 1294 --photo src.jpg --text 'カイト|BIRTHDAY' --fix 'カイトBIRTHDAY' --out DIR [--layout '{"textSize":"smaller"}']
   ※ 生成・作り直しは必ず start_job() で、その案件の文字・参考画像を入れ直してから始める（別の案件の顔・文字が入る事故の対策）
 """
-import argparse, base64, json, os, sys, time
+import argparse, base64, json, os, random, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'resize'))
 from common import api  # noqa: E402
@@ -101,7 +101,17 @@ def start_job(path, body, text=None, request=None, media=None, kind='photo'):
     g = latest()
     if g and g.get('status') in ('pending', 'running'):  # 入れ直している間にほかの処理が始めた→入れ直しからやり直す
         return start_job(path, body, text, request, media, kind)
-    return send('POST', path, body)
+    # 別のセッションが同時に入れ直すことがある（2026-11-16 カエデの作り直しに Rinachi の写真・文字が入った件）。
+    # 始める直前と直後に文字を読み直し、自分のものでなければ止める（混ざった案は使わない・登録しない）。
+    want = (text or 'なし').strip()
+    if (send('GET', '/brief').get('requiredTexts') or '').strip() != want:
+        time.sleep(random.uniform(5, 20))
+        return start_job(path, body, text, request, media, kind)
+    st = send('POST', path, body)
+    time.sleep(3)
+    if (send('GET', '/brief').get('requiredTexts') or '').strip() != want:
+        raise RuntimeError('生成を始めた直後に別の案件の文字・写真に入れ替わりました（生成 %s は使わないでください）' % st.get('id'))
+    return st
 
 
 def run_and_fetch(start, out):
