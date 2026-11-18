@@ -48,7 +48,7 @@ if not r.get('ok'):
 # 2026-11-07 ユーザー指定：LINEで送る前に元画像との違いのチェック（check.py）。失敗しても登録はそのまま
 try:
     import subprocess
-    subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'check.py'), 'id', r.get('id', '')], timeout=600)
+    subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'check.py'), 'id', str(r.get('id', ''))], timeout=600)
 except Exception as e: print('チェックできませんでした:', e)
 if a.cand and not a.fix:
     print(json.dumps(api({'action': 'resizeState', 'id': a.cand, 'state': '作成済み', 'result': r.get('id', '')}), ensure_ascii=False))
