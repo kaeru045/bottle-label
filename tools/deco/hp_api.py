@@ -96,20 +96,23 @@ def start_job(path, body, text=None, request=None, media=None, kind='photo'):
     アップロードなど時間のかかる処理は先に済ませ、ここでは「待つ → 入れ直す → 始める」を続けて行う。"""
     if text is None or media is None: raise RuntimeError('文字と参考画像（mediaAssetId）を指定してください（前の案件の文字・写真が入る事故を防ぐため）')
     wait_idle()
-    send('PATCH', '/brief', {'requiredTexts': text or 'なし', 'requestText': request or ''})
+    try: send('PATCH', '/brief', {'requiredTexts': text or 'なし', 'requestText': request or ''})
+    except RuntimeError as e:  # 2026-11-18 改行区切りの文字がHPのWAFで403になることがある→CRLFで送り直す
+        if '403' not in str(e): raise
+        send('PATCH', '/brief', {'requiredTexts': (text or 'なし').replace('\n', '\r\n'), 'requestText': request or ''})
     send('PUT', '/reference-images', {'items': [{'mediaAssetId': media, 'kind': kind}]})
     g = latest()
     if g and g.get('status') in ('pending', 'running'):  # 入れ直している間にほかの処理が始めた→入れ直しからやり直す
         return start_job(path, body, text, request, media, kind)
     # 別のセッションが同時に入れ直すことがある（2026-11-16 カエデの作り直しに Rinachi の写真・文字が入った件）。
     # 始める直前と直後に文字を読み直し、自分のものでなければ止める（混ざった案は使わない・登録しない）。
-    want = (text or 'なし').strip()
-    if (send('GET', '/brief').get('requiredTexts') or '').strip() != want:
+    want = (text or 'なし').replace('\r\n', '\n').strip()
+    if (send('GET', '/brief').get('requiredTexts') or '').replace('\r\n', '\n').strip() != want:
         time.sleep(random.uniform(5, 20))
         return start_job(path, body, text, request, media, kind)
     st = send('POST', path, body)
     time.sleep(3)
-    if (send('GET', '/brief').get('requiredTexts') or '').strip() != want:
+    if (send('GET', '/brief').get('requiredTexts') or '').replace('\r\n', '\n').strip() != want:
         raise RuntimeError('生成を始めた直後に別の案件の文字・写真に入れ替わりました（生成 %s は使わないでください）' % st.get('id'))
     return st
 
