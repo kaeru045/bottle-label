@@ -252,6 +252,17 @@ def read(path_or_bytes):
     return im
 
 
+def front_note(design, text):
+    """2026-11-18 ユーザー指定：正面から見たときに文字がはみ出していないか（fronttext.py）をチェック文に足す"""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import fronttext
+        m = fronttext.check(design).get('msg') or '✅ 文字は正面に収まっています'
+    except Exception as e:
+        m = '文字の位置：判定できませんでした（' + str(e)[:40] + '）'
+    return (m + '\n' + text) if m.startswith('⚠️') else (text + '\n' + m)
+
+
 def run_id(api, rid, v=None):
     g = api({'action': 'checkGet', 'id': rid}, timeout=200)
     if not g.get('ok'): return {'id': rid, 'error': g.get('error') or g.get('body')}
@@ -262,6 +273,7 @@ def run_id(api, rid, v=None):
         res, img = compare(read(base64.b64decode(g['orig'])), read(base64.b64decode(g['design'])))
     except Exception as e:
         api({'action': 'setCheck', 'id': rid, 'v': v, 'text': 'チェックできませんでした（' + str(e)[:80] + '）'}); return {'id': rid, 'error': str(e)}
+    res['summary'] = front_note(read(base64.b64decode(g['design'])), res['summary'])
     ok, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
     r = api({'action': 'setCheck', 'id': rid, 'v': v, 'text': res['summary'], 'image': {'name': (g.get('base') or rid) + 'チェック.jpg', 'data': base64.b64encode(buf.tobytes()).decode()}})
     return {'id': rid, 'name': g.get('name'), 'text': res['summary'], 'ok': r.get('ok'), 'error': r.get('error')}
@@ -272,6 +284,7 @@ if __name__ == '__main__':
     if cmd == 'one':
         os.makedirs(sys.argv[4], exist_ok=True)
         res, img = compare(read(sys.argv[2]), read(sys.argv[3]))
+        res['summary'] = front_note(read(sys.argv[3]), res['summary'])
         cv2.imwrite(os.path.join(sys.argv[4], 'check.jpg'), img, [cv2.IMWRITE_JPEG_QUALITY, 85])
         json.dump(res, open(os.path.join(sys.argv[4], 'check.json'), 'w'), ensure_ascii=False, indent=1, default=str)
         print(res['summary'])

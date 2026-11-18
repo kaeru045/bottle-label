@@ -184,13 +184,15 @@ window.checkUpdates = async ({ dry = false, max = 1 } = {}) => {
 };
 // 2026-11-12 ユーザー指定：再生成は毎回テンプレと写真から作り直すので、前の修正指示が抜けて元に戻ってしまう。
 // これまでの修正指示（メモの【vN 修正】修正指示「…」／【LINEで修正依頼】…）を古い順にまとめて、今回の指示と一緒に渡す。
+// 2026-11-18 ユーザー指定：正面から見たときに文字がはみ出さないよう、新規作成・修正の作り直しの両方に毎回足す
+window.FRONT_RULE = '【必ず守る】名前・メッセージなどの文字は、ボトルを正面から見たときに全部見えるように、画像の横の真ん中（左から36%〜64%の幅、1440pxなら520〜920px）の中にすべて収め、文字のまとまりの中心を横50%にしてください。長い文字は小さくするか2行に分けてください。文字の下の端は画像の下から10%より上にしてください。';
 window.fixText = it => {
   const memo = String(it.memo || ''), cur = String(it.fix || '').trim(), seen = new Set([cur]), prev = [];
   const found = [];
   for (const m of memo.matchAll(/修正指示「([\s\S]*?)」で作り直し/g)) found.push(m[1].trim());
   found.reverse().forEach(t => { const k = t.replace(/^「|」$/g, '').trim(); if (k && !seen.has(k)) { seen.add(k); prev.push(k); } });
-  if (!prev.length) return cur;
-  return ('これまでの修正（すべてそのまま反映したまま作り直す。前の修正を元に戻さない）：\n' + prev.map((t, i) => (i + 1) + '. ' + t).join('\n') + '\n\n今回の修正：\n' + cur).slice(0, 2000);
+  if (!prev.length) return (cur + '\n' + FRONT_RULE).slice(0, 2000);
+  return ('これまでの修正（すべてそのまま反映したまま作り直す。前の修正を元に戻さない）：\n' + prev.map((t, i) => (i + 1) + '. ' + t).join('\n') + '\n\n今回の修正：\n' + cur + '\n' + FRONT_RULE).slice(0, 2000);
 };
 window.setFix = async (order, fix, name) => siteApi({ action: 'setFix', order, name, fix });
 window.listFixes = async () => { const r = await siteApi({ action: 'fixes' }); return r.ok ? r.items : r; };
@@ -351,7 +353,9 @@ window.makeProject0 = async o => {
   // 2026-11-11 ユーザー指定：名前・文字を見落とさず必ず入れる／装飾やデザイン以外の人物・画像を付け足さない（毎回、要望の最後に足す）
   const must = [o.name, ...String(o.texts || '').split('\n')].map(x => String(x || '').trim()).filter(x => x && x !== 'なし');
   const rules = (must.length ? '【必ず守る】次の名前・文字は1つも見落とさず、一字も変えずに全部入れてください：' + must.map(x => '「' + x + '」').join('') + '。' : '')
-    + '【必ず守る】依頼に無い人物・写真・イラストなど、装飾やデザイン以外の画像を付け足さないでください（人物は添付の写真の人だけ）。';
+    + '【必ず守る】依頼に無い人物・写真・イラストなど、装飾やデザイン以外の画像を付け足さないでください（人物は添付の写真の人だけ）。'
+    // 2026-11-18 ユーザー指定：正面から見たときに毎回文字がはみ出ていたので、正面の幅に収める指示を毎回足す
+    + window.FRONT_RULE;
   setV(q('#requestText'), [o.request || '', rules].filter(Boolean).join('\n'));
   await wait(500);
   [...document.querySelectorAll('button')].find(b => b.innerText.trim() === '案件を作成').click();

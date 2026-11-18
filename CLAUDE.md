@@ -50,3 +50,4 @@
 - 作れなかった・修正できなかった理由は、そのたびにLINEグループへ送る（2026-11-13 ユーザー指定）：GAS lineSay_（同じ内容は6時間に1回）。fixState エラー・resizeState エラーは管理サイトが自動で送る。Decolinoの新規作成は check.js（makeProject の失敗・waitResult で3回失敗/写真が読めない/クレジット切れ・管理画面の修正を押せないとき）、おまかせは omakase.py が action failNote で送る。
 - 提出用のオプション（タグ・ネックシール・リボン🎀・デコ・ネック色・タグシール）は tools/resize/spec_rules.py が Asana のタスク名・仕様欄・説明から決める（2026-11-13 ユーザー指定：リボン・デコが反映されないことが多かった）。compose.py --task、candidates.py の item.task、omakase.py --task で自動適用、ブラウザの registerToSite には spec_rules.py の出力を渡す。🎀＝リボン（色の指定なしは水色 orig）、デコ→decoChira。
 - check.js は Decolino 側に組み込み済み（2026-11-17、開発の方がログイン後の全ページで読み込み、__W・__K もサーバー側で設定）。定期実行は外部から読み込まず `typeof makeProject/checkUpdates` で確かめるだけ。check.js を直したらファイルをユーザーに送り、開発の方が確認して差し替える。
+- 文字は正面（横506〜923px、1440換算）に収める（2026-11-18 ユーザー指定：毎回はみ出ていた）：check.js の FRONT_RULE を新規作成（makeProject）と修正の作り直し（fixText）の要望に毎回足す。hp_prompt も 520〜920px。LINE前のチェック（check.py）が tools/resize/fronttext.py（PP-OCR の文字検出）ではみ出し・帯かかりを「⚠️」で知らせる。
