@@ -26,7 +26,7 @@ def fit(img):
     g = group(bs)
     if not g: return img, {'changed': False, 'reason': '文字なし'}
     L, T, R, B = g
-    if L >= TARGET[0] - 8 and R <= TARGET[1] + 8:
+    if L >= FRONT[0] - fronttext.TOL and R <= FRONT[1] + fronttext.TOL:  # 正面（506〜923）に入っていれば触らない（ロゴなどを崩さないため）
         return img, {'changed': False, 'before': [L, R]}
     s = min(1.0, (TARGET[1] - TARGET[0]) / (R - L))
     # 文字と飾り：明るい金・白・銀（赤いバラや暗い背景は入れない）
