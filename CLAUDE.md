@@ -52,3 +52,4 @@
 - check.js は Decolino 側に組み込み済み（2026-11-17、開発の方がログイン後の全ページで読み込み、__W・__K もサーバー側で設定）。定期実行は外部から読み込まず `typeof makeProject/checkUpdates` で確かめるだけ。check.js を直したらファイルをユーザーに送り、開発の方が確認して差し替える。
 - 文字は正面（横506〜923px、1440換算）に収める（2026-11-18 ユーザー指定：毎回はみ出ていた）：check.js の FRONT_RULE を新規作成（makeProject）と修正の作り直し（fixText）の要望に毎回足す。hp_prompt も 520〜920px。LINE前のチェック（check.py）が tools/resize/fronttext.py（PP-OCR の文字検出）ではみ出し・帯かかりを「⚠️」で知らせる。
 - 終わった案件の削除（定期実行「✔️・完了の案件を管理画面から消す」毎時27分）：Asanaのタスク名に✔️が付いた依頼（asanaDone）と、ステータス「完了」（LINEの「OK」など）の案件を、2日待たずに管理サイトから消す（ui removeItem）。2026-11-18 ユーザー指定。
+- 名前は必ず正面に収める（2026-11-19 ユーザー指定「今後必ず」）：tools/resize/fitfront.py が名前の行（正面にかかるいちばん幅の広い行＋上下の Birthday など）と金・白の飾りを縮めて横545〜885px・中心715pxに置き、元の場所は周りの色で埋める。compose.py は既定でこれを通す（--no-fit で止める）。Decolino など compose.py を通らない登録は、check.py（毎時11・41分、register.py の直後）がはみ出しを見つけたら refit で直して新しい版として登録し直す（NO_REFIT で繰り返し防止）。

@@ -46,13 +46,25 @@ def boxes(img):
     return out
 
 
+def group(bs):
+    main = [b for b in bs if b[0] < FRONT[1] and b[2] > FRONT[0] and (b[2] - b[0]) > 40 and b[1] > 254 - 40]
+    if not main: return None
+    L, T, R, B = max(main, key=lambda b: b[2] - b[0])
+    T0, B0, L0, R0 = T, B, L, R
+    for b in bs:
+        c = (b[0] + b[2]) / 2
+        if L0 - 20 <= c <= R0 + 20 and b[1] >= T0 - 70 and b[3] <= B0 + 110 and (b[2] - b[0]) > 20:
+            L, R, T, B = min(L, b[0]), max(R, b[2]), min(T, b[1]), max(B, b[3])
+    return L, T, R, B
+
+
 def check(img):
     if img.shape[1] != 1440: img = cv2.resize(img, (1440, 1024), interpolation=cv2.INTER_AREA)
     bs = boxes(img)
-    # 正面の中心にかかる文字の行だけを見る（背景の飾り文字・端のロゴは対象外）
-    main = [b for b in bs if b[0] < FRONT[1] and b[2] > FRONT[0] and (b[2] - b[0]) > 40]
-    if not main: return {'boxes': bs, 'msg': ''}
-    L = min(b[0] for b in main); R = max(b[2] for b in main); T = min(b[1] for b in main); B = max(b[3] for b in main)
+    # 名前の行（正面にかかるいちばん幅の広い行）と、その上下の近い行だけを見る（背景の飾り文字・指輪などの小さな反応・端のロゴは対象外）
+    g = group(bs)
+    if not g: return {'boxes': bs, 'msg': ''}
+    L, T, R, B = g
     msg = []
     if L < FRONT[0] - TOL or R > FRONT[1] + TOL:
         msg.append(f'⚠️ 文字が正面からはみ出しています（左{max(0, FRONT[0] - L)}px・右{max(0, R - FRONT[1])}px）')

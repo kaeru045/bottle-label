@@ -263,9 +263,52 @@ def front_note(design, text):
     return (m + '\n' + text) if m.startswith('⚠️') else (text + '\n' + m)
 
 
+def refit(rid):
+    from common import api
+    """2026-11-19 ユーザー指定（今後必ず）：名前が正面からはみ出していたら、LINEに送る前に文字を縮めて正面に収め、新しい版として登録し直す。
+    design.py get → compose.py（fitfront で縮める）→ register.py。登録し直した版は register.py がもう一度チェックする。"""
+    import subprocess, tempfile
+    here = os.path.dirname(os.path.abspath(__file__))
+    d = tempfile.mkdtemp(prefix='refit_')
+    subprocess.run([sys.executable, os.path.join(here, '..', 'deco', 'design.py'), 'get', str(rid), '--out', d], check=True, capture_output=True, timeout=300)
+    info = json.load(open(os.path.join(d, 'info.json')))
+    try:  # 元画像ID などは一覧の行から（info.json に無い項目）
+        row = next((x for x in api({'action': 'ui', 'fn': 'list', 'args': []}, timeout=150).get('v') or [] if str(x.get('ID')) == str(rid)), {})
+        info = {**row, **info}
+    except Exception: pass
+    sp = info.get('仕様') or {}
+    if isinstance(sp, str): sp = json.loads(sp or '{}')
+    if not os.path.exists(os.path.join(d, 'design.jpg')): raise RuntimeError('デザイン画像がありません')
+    cmd = [sys.executable, os.path.join(here, 'compose.py'), os.path.join(d, 'design.jpg'), '--spec', json.dumps(sp.get('spec') or {}, ensure_ascii=False),
+           '--checks', json.dumps(sp.get('checks') or [], ensure_ascii=False), '--out', d]
+    if sp.get('back'): cmd += ['--back', sp['back'], '--back-opt', json.dumps(sp.get('backOpt') or {}, ensure_ascii=False)]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    fit = (json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 and r.stdout.strip() else {}).get('fit') or {}
+    if not fit.get('changed'): raise RuntimeError('文字を縮められませんでした ' + (r.stderr or '')[-200:])
+    base = {k: v for k, v in sp.items() if k not in ('spec', 'checks')}
+    reg = [sys.executable, os.path.join(here, 'register.py'), '--dir', d, '--order', str(info.get('注文') or ''), '--shop', str(info.get('店名') or ''),
+           '--name', str(info.get('名前') or ''), '--due', str(info.get('期日') or ''), '--asana', str(info.get('Asana') or ''),
+           '--template', str(info.get('テンプレ') or 'リサイズ'), '--decolino', str(info.get('Decolino') or ''), '--asset', str(info.get('元画像ID') or ''),
+           '--base-spec', json.dumps(base, ensure_ascii=False), '--back', sp.get('back') or '', '--back-opt', json.dumps(sp.get('backOpt') or {}, ensure_ascii=False),
+           '--file-base', f"{info.get('店名') or ''}_{info.get('名前') or ''}", '--memo', '自動：名前が正面からはみ出していたので、文字を縮めて正面に収めました（倍率 %s）' % fit.get('scale')]
+    r = subprocess.run(reg, capture_output=True, text=True, timeout=900, env={**os.environ, 'NO_REFIT': '1'})  # 直した版はもう直さない（繰り返し防止）
+    if r.returncode != 0: raise RuntimeError('登録できませんでした ' + (r.stdout + r.stderr)[-300:])
+    return fit
+
+
 def run_id(api, rid, v=None):
     g = api({'action': 'checkGet', 'id': rid}, timeout=200)
     if not g.get('ok'): return {'id': rid, 'error': g.get('error') or g.get('body')}
+    # 名前が正面からはみ出していれば、先に直して登録し直す（直した版のチェックは register.py が行う）
+    if g.get('design') and os.environ.get('NO_REFIT') != '1':
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import fronttext
+            if (fronttext.check(read(base64.b64decode(g['design']))).get('msg') or '').startswith('⚠️ 文字が正面'):
+                fit = refit(rid)
+                return {'id': rid, 'name': g.get('name'), 'text': '名前を正面に収めて登録し直しました（倍率 %s）' % fit.get('scale'), 'ok': True}
+        except Exception as e:
+            print('正面に収める処理ができませんでした:', str(e)[:300], file=sys.stderr)
     v = v or g.get('v')
     if not g.get('orig'):
         r = api({'action': 'setCheck', 'id': rid, 'v': v, 'text': '元画像が無いのでチェックなし'}); return {'id': rid, 'text': '元画像なし', 'ok': r.get('ok')}
