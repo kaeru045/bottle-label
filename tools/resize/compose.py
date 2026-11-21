@@ -18,7 +18,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default=''); ap.add_argument('--back-opt', default='{}'); ap.add_argument('--out', required=True)
 ap.add_argument('--task', default='', help='Asanaのタスク {"name":..,"field":仕様欄,"notes":説明}。あれば spec_rules.py でリボン・デコ・タグなどの足りないオプションを足す（2026-11-13）')
 ap.add_argument('--tag-adj', default='', help='タグ内の画像の位置 {"x":左右,"y":上下,"z":大きさ%%}')
-ap.add_argument('--no-fit', action='store_true', help='名前が正面からはみ出していても縮めない（既定は fitfront.py で正面に収める。2026-11-19 ユーザー指定「今後必ず」）')
+ap.add_argument('--no-fit', action='store_true', help='（互換用・既定で縮めない）')
+ap.add_argument('--fit', action='store_true', help='文字だけを縮めて正面に収める（fitfront.py）。2026-11-22〜既定では使わない：文字の枠が崩れ・汚れが残るため。はみ出しはデザイン全体を縮めて背景を生成拡張で広げる（スキル orishan-front-fit）')
 ap.add_argument('--html', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'index.html'))
 a = ap.parse_args()
 spec, checks = json.loads(a.spec), json.loads(a.checks)
@@ -29,7 +30,7 @@ if a.task.strip():
 os.makedirs(a.out, exist_ok=True)
 # 名前が正面（横506〜923px）からはみ出していたら、文字のまとまりを縮めて収める。デザイン画像そのもの（と out/design.jpg）を書き換える
 fit = None
-if not a.no_fit:
+if a.fit and not a.no_fit:
     try:
         import cv2, shutil
         from fitfront import fit as _fit

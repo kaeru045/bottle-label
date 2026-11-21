@@ -300,7 +300,7 @@ def run_id(api, rid, v=None):
     g = api({'action': 'checkGet', 'id': rid}, timeout=200)
     if not g.get('ok'): return {'id': rid, 'error': g.get('error') or g.get('body')}
     # 名前が正面からはみ出していれば、先に直して登録し直す（直した版のチェックは register.py が行う）
-    if g.get('design') and os.environ.get('NO_REFIT') != '1':
+    if g.get('design') and os.environ.get('REFIT') == '1' and os.environ.get('NO_REFIT') != '1':  # 2026-11-22〜既定では直さず⚠️で知らせるだけ（枠が崩れるため）
         try:
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import fronttext
