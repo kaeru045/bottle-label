@@ -29,6 +29,7 @@ def fit(img):
     if L >= FRONT[0] - fronttext.TOL and R <= FRONT[1] + fronttext.TOL:  # 正面（506〜923）に入っていれば触らない（ロゴなどを崩さないため）
         return img, {'changed': False, 'before': [L, R]}
     s = min(1.0, (TARGET[1] - TARGET[0]) / (R - L))
+    if s >= 0.97: return img, {'changed': False, 'before': [L, R], 'reason': 'ほぼ収まっている（ずらすだけの修正はしない）'}
     # 文字と飾り：明るい金・白・銀（赤いバラや暗い背景は入れない）
     y0, y1 = max(T - 45, 0), min(B + 110, 1024)
     x0, x1 = max(L - 120, 0), min(R + 120, 1440)
