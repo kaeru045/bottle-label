@@ -35,7 +35,7 @@ def save(fid, path):
 
 
 def get(id_, out):
-    x = next((i for i in items() if i.get('ID') == id_), None)
+    x = next((i for i in items() if str(i.get('ID')) == str(id_)), None)
     if not x: sys.exit('見つかりません: ' + id_)
     os.makedirs(out, exist_ok=True)
     files = {}
@@ -63,7 +63,7 @@ def main():
     elif a.cmd == 'get':
         print(json.dumps(get(a.id, a.out), ensure_ascii=False, indent=1))
     else:
-        x = next((i for i in items() if i.get('ID') == a.id), None)
+        x = next((i for i in items() if str(i.get('ID')) == str(a.id)), None)
         if not x: sys.exit('見つかりません: ' + a.id)
         print(json.dumps(api({'action': 'setFix', 'order': x.get('注文'), 'name': x.get('名前'), 'fix': a.fix}, timeout=150), ensure_ascii=False))
 
