@@ -155,8 +155,29 @@ def compare(o, d):
         inside = (bx[2] - bx[0]) * (bx[3] - bx[1]) / max(1, (x1 - x0) * (y1 - y0))
         a = cv2.cvtColor(gw[bx[1]:bx[3], bx[0]:bx[2]], cv2.COLOR_BGR2GRAY).astype(np.float32)
         b = cv2.cvtColor(gd[bx[1]:bx[3], bx[0]:bx[2]], cv2.COLOR_BGR2GRAY).astype(np.float32)
-        s = ssim(a, b); cr = float(ch[bx[1]:bx[3], bx[0]:bx[2]].mean()) * 100
-        state = 'same' if s >= 0.80 and cr < 8 else ('slight' if s >= 0.55 and cr < 35 else 'redrawn')
+        s = ssim(a, b)
+        # 顔の変化は顔の中だけで測る：①顔のまわりで位置を細かく合わせ直す（ECC）②顔の中で色を合わせる（色調整の強いデザインで、そのままの顔を「変化」と誤判定しないため）
+        pw_, ph_ = int((bx[2] - bx[0]) * 0.5), int((bx[3] - bx[1]) * 0.5)
+        X0, Y0, X1, Y1 = max(0, bx[0] - pw_), max(0, bx[1] - ph_), min(W, bx[2] + pw_), min(H, bx[3] + ph_)
+        ga = cv2.cvtColor(ow[Y0:Y1, X0:X1], cv2.COLOR_BGR2GRAY).astype(np.float32); gb = cv2.cvtColor(d[Y0:Y1, X0:X1], cv2.COLOR_BGR2GRAY).astype(np.float32)
+        wm = np.eye(2, 3, dtype=np.float32)
+        try:
+            msk = np.zeros(ga.shape, np.uint8); msk[bx[1] - Y0:bx[3] - Y0, bx[0] - X0:bx[2] - X0] = 1
+            _, wm = cv2.findTransformECC(cv2.GaussianBlur(gb, (0, 0), 1), cv2.GaussianBlur(ga, (0, 0), 1), wm, cv2.MOTION_AFFINE, (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1e-5), msk, 5)
+            if np.abs(wm[:, :2] - np.eye(2)).max() > 0.15 or np.abs(wm[:, 2]).max() > (bx[2] - bx[0]) * 0.3: wm = np.eye(2, 3, dtype=np.float32)
+        except cv2.error: wm = np.eye(2, 3, dtype=np.float32)
+        owc = cv2.warpAffine(ow[Y0:Y1, X0:X1], wm, (X1 - X0, Y1 - Y0), flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REPLICATE)
+        ix0, iy0 = bx[0] - X0 + int((bx[2] - bx[0]) * 0.12), bx[1] - Y0 + int((bx[3] - bx[1]) * 0.12)
+        ix1, iy1 = bx[2] - X0 - int((bx[2] - bx[0]) * 0.12), bx[3] - Y0 - int((bx[3] - bx[1]) * 0.05)
+        la = cv2.cvtColor(owc[iy0:iy1, ix0:ix1], cv2.COLOR_BGR2LAB).astype(np.float32); lb = ld[Y0 + iy0:Y0 + iy1, X0 + ix0:X0 + ix1]
+        for c in range(3):
+            x, y = la[..., c].ravel(), lb[..., c].ravel(); A2 = np.vstack([x, np.ones_like(x)]).T
+            k2, b2 = np.linalg.lstsq(A2, y, rcond=None)[0]; la[..., c] = k2 * la[..., c] + b2
+        fd2 = np.abs(blur(la) - blur(lb)); fdl = fd2[..., 0] + 0.6 * (fd2[..., 1] + fd2[..., 2])
+        cr = float((fdl > 14).mean()) * 100
+        s = ssim(la[..., 0], lb[..., 0])  # 形の似かた（位置と色を合わせたあと）
+        # 2026-11-22：そのままの顔は 0.89 以上、生成で描き直された顔は 0.81（キャンディ黒崎）
+        state = 'same' if s >= 0.87 and cr < 20 else ('slight' if s >= 0.84 and cr < 35 else 'redrawn')
         if inside < 0.6: state = 'cut'
         res['faces'].append({'n': i + 1, 'state': state, 'ssim': round(s, 2), 'changed': round(cr, 1), 'box': bx})
         fmapped.append(bx + (state,))
@@ -263,13 +284,12 @@ def front_note(design, text):
     return (m + '\n' + text) if m.startswith('⚠️') else (text + '\n' + m)
 
 
-def refit(rid):
+def _get(rid):
+    """管理サイトの行を取り出す（design.py get）→ (作業フォルダ, info, 仕様)"""
     from common import api
-    """2026-11-19 ユーザー指定（今後必ず）：名前が正面からはみ出していたら、LINEに送る前に文字を縮めて正面に収め、新しい版として登録し直す。
-    design.py get → compose.py（fitfront で縮める）→ register.py。登録し直した版は register.py がもう一度チェックする。"""
     import subprocess, tempfile
     here = os.path.dirname(os.path.abspath(__file__))
-    d = tempfile.mkdtemp(prefix='refit_')
+    d = tempfile.mkdtemp(prefix='re_')
     subprocess.run([sys.executable, os.path.join(here, '..', 'deco', 'design.py'), 'get', str(rid), '--out', d], check=True, capture_output=True, timeout=300)
     info = json.load(open(os.path.join(d, 'info.json')))
     try:  # 元画像ID などは一覧の行から（info.json に無い項目）
@@ -279,21 +299,56 @@ def refit(rid):
     sp = info.get('仕様') or {}
     if isinstance(sp, str): sp = json.loads(sp or '{}')
     if not os.path.exists(os.path.join(d, 'design.jpg')): raise RuntimeError('デザイン画像がありません')
-    cmd = [sys.executable, os.path.join(here, 'compose.py'), os.path.join(d, 'design.jpg'), '--spec', json.dumps(sp.get('spec') or {}, ensure_ascii=False),
-           '--checks', json.dumps(sp.get('checks') or [], ensure_ascii=False), '--out', d]
+    return d, info, sp
+
+
+def _compose(d, design, sp, extra=()):
+    import subprocess
+    here = os.path.dirname(os.path.abspath(__file__))
+    cmd = [sys.executable, os.path.join(here, 'compose.py'), design, '--spec', json.dumps(sp.get('spec') or {}, ensure_ascii=False),
+           '--checks', json.dumps(sp.get('checks') or [], ensure_ascii=False), '--out', d, *extra]
     if sp.get('back'): cmd += ['--back', sp['back'], '--back-opt', json.dumps(sp.get('backOpt') or {}, ensure_ascii=False)]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-    fit = (json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 and r.stdout.strip() else {}).get('fit') or {}
-    if not fit.get('changed'): raise RuntimeError('文字を縮められませんでした ' + (r.stderr or '')[-200:])
+    if r.returncode != 0: raise RuntimeError('提出用を作れませんでした ' + (r.stderr or '')[-200:])
+    return json.loads(r.stdout.strip().splitlines()[-1]) if r.stdout.strip() else {}
+
+
+def _register(d, info, sp, memo, env):
+    import subprocess
+    here = os.path.dirname(os.path.abspath(__file__))
     base = {k: v for k, v in sp.items() if k not in ('spec', 'checks')}
     reg = [sys.executable, os.path.join(here, 'register.py'), '--dir', d, '--order', str(info.get('注文') or ''), '--shop', str(info.get('店名') or ''),
            '--name', str(info.get('名前') or ''), '--due', str(info.get('期日') or ''), '--asana', str(info.get('Asana') or ''),
            '--template', str(info.get('テンプレ') or 'リサイズ'), '--decolino', str(info.get('Decolino') or ''), '--asset', str(info.get('元画像ID') or ''),
            '--base-spec', json.dumps(base, ensure_ascii=False), '--back', sp.get('back') or '', '--back-opt', json.dumps(sp.get('backOpt') or {}, ensure_ascii=False),
-           '--file-base', f"{info.get('店名') or ''}_{info.get('名前') or ''}", '--memo', '自動：名前が正面からはみ出していたので、文字を縮めて正面に収めました（倍率 %s）' % fit.get('scale')]
-    r = subprocess.run(reg, capture_output=True, text=True, timeout=900, env={**os.environ, 'NO_REFIT': '1'})  # 直した版はもう直さない（繰り返し防止）
+           '--file-base', f"{info.get('店名') or ''}_{info.get('名前') or ''}", '--memo', memo]
+    r = subprocess.run(reg, capture_output=True, text=True, timeout=900, env={**os.environ, **env})  # 直した版はもう直さない（繰り返し防止）
     if r.returncode != 0: raise RuntimeError('登録できませんでした ' + (r.stdout + r.stderr)[-300:])
+
+
+def refit(rid):
+    """2026-11-19 ユーザー指定：名前が正面からはみ出していたら文字を縮めて正面に収め、新しい版として登録し直す（REFIT=1 のときだけ）。"""
+    d, info, sp = _get(rid)
+    fit = _compose(d, os.path.join(d, 'design.jpg'), sp, ['--fit']).get('fit') or {}
+    if not fit.get('changed'): raise RuntimeError('文字を縮められませんでした')
+    _register(d, info, sp, '自動：名前が正面からはみ出していたので、文字を縮めて正面に収めました（倍率 %s）' % fit.get('scale'), {'NO_REFIT': '1'})
     return fit
+
+
+def refix(rid, orig, design):
+    """2026-11-22 ユーザー指定（毎回チェック・変わっていたら直す）：顔が描き直されていたら、元画像の顔を貼り戻して新しい版として登録し直す。
+    facefix.py で貼り戻し → 顔がそのままになったか確かめる → compose.py → register.py（NO_FACEFIX で繰り返し防止）。"""
+    import facefix
+    out, inf = facefix.fix(orig, design, states=('redrawn',))
+    if not inf.get('fixed'): raise RuntimeError('直す顔がありません：' + str(inf.get('reason')))
+    bad = [f for f in inf.get('after') or [] if f['state'] == 'redrawn']
+    if bad: raise RuntimeError('貼り戻しても顔が合いません')
+    d, info, sp = _get(rid)
+    p = os.path.join(d, 'design_face.jpg'); cv2.imwrite(p, out, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    _compose(d, p, sp)
+    import shutil; shutil.copy(p, os.path.join(d, 'design.jpg'))
+    _register(d, info, sp, '自動：顔が描き直されていたので、元画像の顔を貼り戻しました（%d人）' % inf['fixed'], {'NO_FACEFIX': '1'})
+    return inf
 
 
 def run_id(api, rid, v=None):
@@ -316,6 +371,14 @@ def run_id(api, rid, v=None):
         res, img = compare(read(base64.b64decode(g['orig'])), read(base64.b64decode(g['design'])))
     except Exception as e:
         api({'action': 'setCheck', 'id': rid, 'v': v, 'text': 'チェックできませんでした（' + str(e)[:80] + '）'}); return {'id': rid, 'error': str(e)}
+    # 顔が描き直されていれば、元画像の顔を貼り戻して登録し直す（2026-11-22 ユーザー指定「毎回チェックして・変わってたら直して」）
+    if any(f['state'] == 'redrawn' for f in res.get('faces') or []) and os.environ.get('NO_FACEFIX') != '1':
+        try:
+            inf = refix(rid, read(base64.b64decode(g['orig'])), read(base64.b64decode(g['design'])))
+            return {'id': rid, 'name': g.get('name'), 'text': '顔が描き直されていたので元画像の顔を貼り戻し、登録し直しました（%d人）' % inf['fixed'], 'ok': True}
+        except Exception as e:
+            print('顔を直せませんでした:', str(e)[:300], file=sys.stderr)
+            res['summary'] = res['summary'] + '\n⚠️ 自動で顔を直せませんでした（' + str(e)[:60] + '）'
     res['summary'] = front_note(read(base64.b64decode(g['design'])), res['summary'])
     ok, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
     r = api({'action': 'setCheck', 'id': rid, 'v': v, 'text': res['summary'], 'image': {'name': (g.get('base') or rid) + 'チェック.jpg', 'data': base64.b64encode(buf.tobytes()).decode()}})
