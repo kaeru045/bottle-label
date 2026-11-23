@@ -126,6 +126,8 @@ window.backfillSrc = async ({ max = 50 } = {}) => {
 };
 // 裏に必ずロゴを入れる店：[[鍵の文字…], ロゴのパス（tools/resize/ からの相対）]
 const SHOP_BACK_LOGO = [[['ミルドラ', 'MILDROUS'], 'logos/mildrous.png']];
+// デザイン画像のファイル名は名前の後に必ず「様」（2026-11-23 ユーザー指定）
+const samaOf = b => { b = String(b || ''); return /様$/.test(b) ? b : b + '様'; };
 window.registerToSite = async function (o) {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const b64 = async blob => { const u = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
@@ -164,8 +166,8 @@ window.registerToSite = async function (o) {
     const tagBlob = tc ? await new Promise(r => tc.toBlob(r, 'image/png')) : null;
     const body = JSON.stringify({ key: o.key, order: o.order, shop: o.shop, name: o.name, template: o.template, due: o.due, asana: o.asana, decolino: o.decolino, memo: ((o.memo || '') + (o.logo && window.__logoNote ? '\n' + window.__logoNote : '')).trim(),
       asset: o.asset || '', note: o.note || '', fixDone: !!o.fixDone, force: !!o.force, spec: { spec: o.spec || {}, checks: o.checks || [], shop: o.shop, template: o.template, confirmed: o.confirmed || o.asset || '', logo: o.logo || '', logoPos: o.logoPos || null, back: o.back || '', backOpt: o.backOpt || {} },
-      design: { name: o.fileBase + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
-      designPreview: { name: o.fileBase + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
+      design: { name: samaOf(o.fileBase) + 'デザイン画像.jpg', data: await b64(dOut) }, submission: { name: o.fileBase + '提出用.jpg', data: await b64(submission) },
+      designPreview: { name: samaOf(o.fileBase) + 'デザイン_プレビュー.jpg', data: await b64(await shrink(dOut, 900)) }, submissionPreview: { name: o.fileBase + '提出用_プレビュー.jpg', data: await b64(await shrink(submission, 1100)) },
       tpl: await (async () => { try { const s = o.tplUrl || (o.decolino && o.template && await tplFor(o.decolino, o.template)); return s ? { name: o.fileBase + 'テンプレ.jpg', data: await tplJpeg(s) } : null; } catch (e) { return null; } })(),
       tag: tagBlob ? { name: o.fileBase + 'タグ_' + ((w.__TAGNAME || {})[tk] || tk) + '.png', data: await b64(tagBlob) } : null,
       src: await (async () => { const d = o.srcUrl ? await photoB64(o.srcUrl) : o.decolino && await srcPhoto(o.decolino); return d ? { name: o.fileBase + '元写真.jpg', data: d } : null; })() });

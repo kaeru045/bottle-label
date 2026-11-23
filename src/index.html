@@ -206,7 +206,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 11/23 12:20</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 11/23 13:40</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -1467,8 +1467,9 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
       try { await fn(); } finally { busy = false; SAVE_BTNS.forEach(b => $(b) && ($(b).disabled = noDl && !b.startsWith('mb') ? true : false)); el.textContent = label; }
     }, true);
   }
+  const samaN = n => (!n || /様$/.test(n)) ? n : n + '様';  // デザイン画像は名前の後に「様」（2026-11-23）
   guard('dlJpg', async () => save(`${fname()}提出用.jpg`, await toBlob(out, 'image/jpeg', 0.92)));
-  guard('dlDesign', async () => save(`${fname()}デザイン画像.jpg`, await toBlob(designCanvas, 'image/jpeg', 0.95)));
+  guard('dlDesign', async () => save(`${samaN(fname())}デザイン画像.jpg`, await toBlob(designCanvas, 'image/jpeg', 0.95)));
   guard('dlPdf', async () => {
     if (!window.jspdf) { status('PDF の準備ができていません。少し待ってからもう一度押してください。', true); return; }
     save(`${fname()}提出用.pdf`, makePdfBlob());
@@ -1485,8 +1486,8 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
     // 2つとも先に作っておき、続けて保存する
     const [b1, b2] = await Promise.all([toBlob(out, 'image/jpeg', 0.92), toBlob(designCanvas, 'image/jpeg', 0.95)]);
     await save(`${n}提出用.jpg`, b1);
-    await save(`${n}デザイン画像.jpg`, b2);
-    status(`${n}提出用.jpg と ${n}デザイン画像.jpg を保存しました。2つ目が保存されない場合は、ブラウザの「複数ファイルのダウンロード」を許可してください。`);
+    await save(`${samaN(n)}デザイン画像.jpg`, b2);
+    status(`${n}提出用.jpg と ${samaN(n)}デザイン画像.jpg を保存しました。2つ目が保存されない場合は、ブラウザの「複数ファイルのダウンロード」を許可してください。`);
   });
 
   // ===== 横長リサイズ（1440×1024・人物写真）：開発中、#dev のときだけ表示 =====

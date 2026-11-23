@@ -32,12 +32,13 @@ info = json.load(open(os.path.join(d, 'compose.json'))) if os.path.exists(os.pat
 tagp = os.path.join(d, 'tag.png')
 spec, checks = json.loads(a.spec), json.loads(a.checks)
 if 'spec' in info: spec, checks = info['spec'], info.get('checks', checks)  # compose.py が spec_rules で足したオプションを使う
+sama = lambda b: b if b.endswith('様') else b + '様'
 rz = a.template == 'リサイズ'
 body = {'order': a.order, 'shop': a.shop, 'name': a.name, 'template': a.template, 'due': a.due, 'asana': a.asana, 'decolino': a.decolino, 'memo': a.memo,
         'asset': a.asset, 'note': ('修正指示「' + a.fix + '」で' + ('リサイズを' if rz else '') + '作り直し') if a.fix else ('リサイズで作り直し' if rz else '作り直し'), 'fixDone': bool(a.fix), 'spec': {**(json.loads(a.base_spec) if a.base_spec else {'confirmed': '', 'logo': ''}), 'spec': spec, 'checks': checks, 'shop': a.shop, 'template': a.template, 'back': a.back, 'backOpt': json.loads(a.back_opt or '{}')},
-        'design': b64file(dj, base + 'デザイン画像.jpg'),
+        'design': b64file(dj, sama(base) + 'デザイン画像.jpg'),  # デザイン画像は名前の後に必ず「様」（2026-11-23 ユーザー指定）
         'submission': b64file(os.path.join(d, 'submission.jpg'), base + '提出用.jpg'),
-        'designPreview': b64file(dp, base + 'デザイン_プレビュー.jpg'),
+        'designPreview': b64file(dp, sama(base) + 'デザイン_プレビュー.jpg'),
         'submissionPreview': b64file(os.path.join(d, 'submission_preview.jpg'), base + '提出用_プレビュー.jpg'),
         'tag': b64file(tagp, base + 'タグ_' + (info.get('tagName') or '') + '.png') if os.path.exists(tagp) else None}
 r = api(body)

@@ -124,12 +124,13 @@ def main():
                                        capture_output=True, text=True, timeout=600)
                     if p.returncode != 0 or not os.path.exists(os.path.join(d, 'submission.jpg')): raise RuntimeError('提出用の合成に失敗 ' + (p.stderr or p.stdout)[-200:])
                     fb = safe(order_no + '_' + name + '_' + tcode)
+                    fbd = safe(order_no + '_' + name + ('' if str(name).endswith('様') else '様') + '_' + tcode)  # デザイン画像は名前の後に「様」（2026-11-23）
                     body = {'order': order_no, 'shop': shop, 'name': name, 'template': tcode, 'due': dues.get(c.get('contentCode')) or '', 'asana': '',
                             'decolino': 'https://admin.reserve-viva-decolino.com/ai/%d/generate' % o['id'], 'memo': '管理画面のAI生成から自動で登録（%s）' % (cd.get('status') or ''),
                             'asset': asset, 'note': '管理画面のAI生成の新しい案', 'fixDone': False, 'force': False,
                             'spec': {'spec': spec, 'checks': [], 'shop': shop, 'template': tcode, 'confirmed': asset, 'logo': '', 'logoPos': None, 'back': '', 'backOpt': {}},
-                            'design': b64file(os.path.join(d, 'design.jpg'), fb + 'デザイン画像.jpg'), 'submission': b64file(os.path.join(d, 'submission.jpg'), fb + '提出用.jpg'),
-                            'designPreview': b64file(os.path.join(d, 'dp.jpg'), fb + 'デザイン_プレビュー.jpg'),
+                            'design': b64file(os.path.join(d, 'design.jpg'), fbd + 'デザイン画像.jpg'), 'submission': b64file(os.path.join(d, 'submission.jpg'), fb + '提出用.jpg'),
+                            'designPreview': b64file(os.path.join(d, 'dp.jpg'), fbd + 'デザイン_プレビュー.jpg'),
                             'submissionPreview': b64file(os.path.join(d, 'submission_preview.jpg'), fb + '提出用_プレビュー.jpg')}
                     tg = os.path.join(d, 'tag.png')
                     if os.path.exists(tg): body['tag'] = b64file(tg, fb + 'タグ.png')
