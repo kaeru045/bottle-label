@@ -94,7 +94,7 @@ async def main():
         if a.back_logo and not back:  # 店のロゴを裏に（裏の文字と同じ大きさの決まり：幅≦240px・高さ≦600px・中心585px、1440×1024換算）
             await pg.set_input_files('#fileLogo', a.back_logo); await pg.wait_for_timeout(1500)
             back = await pg.evaluate("""() => { const img = window.__logoImg && window.__logoImg(); if (!img) return null;
-              const lw = Math.min(240, 600 * img.width / img.height), set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
+              const lw = Math.min(268, 600 * img.width / img.height), set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
               const u = document.getElementById('useLogo'); if (!u.checked) u.click();
               set('size', (lw / 1440 * 100).toFixed(1)); set('pos', (585 / 1024 * 100).toFixed(1));
               return { logo: true, size: +document.getElementById('size').value, w: img.width, h: img.height }; }""")
