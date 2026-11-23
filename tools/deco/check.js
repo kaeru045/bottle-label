@@ -154,7 +154,7 @@ window.registerToSite = async function (o) {
       const img = w.__logoImg && w.__logoImg(); if (!img) throw new Error('店のロゴを入れられませんでした');
       const set = (id, v) => { const e = d.getElementById(id); e.value = v; e.dispatchEvent(new w.Event('input')); };
       if (!d.getElementById('useLogo').checked) d.getElementById('useLogo').click();
-      set('size', (Math.min(268, 600 * img.width / img.height) / 1440 * 100).toFixed(1)); set('pos', (585 / 1024 * 100).toFixed(1)); await wait(2500);
+      set('size', (Math.min(380, 600 * img.width / img.height) / 1440 * 100).toFixed(1)); set('pos', (585 / 1024 * 100).toFixed(1)); await wait(2500);
     }
     await wait(2000);
     if (/サンプル表示中/.test(d.body.innerText)) throw new Error('デザイン未反映');
