@@ -306,7 +306,7 @@ def _compose(d, design, sp, extra=()):
     import subprocess
     here = os.path.dirname(os.path.abspath(__file__))
     cmd = [sys.executable, os.path.join(here, 'compose.py'), design, '--spec', json.dumps(sp.get('spec') or {}, ensure_ascii=False),
-           '--checks', json.dumps(sp.get('checks') or [], ensure_ascii=False), '--out', d, *extra]
+           '--checks', json.dumps(sp.get('checks') or [], ensure_ascii=False), '--shop', str(sp.get('shop') or ''), '--out', d, *extra]
     if sp.get('back'): cmd += ['--back', sp['back'], '--back-opt', json.dumps(sp.get('backOpt') or {}, ensure_ascii=False)]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     if r.returncode != 0: raise RuntimeError('提出用を作れませんでした ' + (r.stderr or '')[-200:])

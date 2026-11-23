@@ -207,7 +207,7 @@ button.primary.alt{background:linear-gradient(135deg,var(--accent3),var(--accent
 <div class="wrap">
   <header>
     <h1>ボトルラベル提出フォーマット</h1>
-    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 11/02 19:30</span></p>
+    <p>デザイン画像とロゴを入れると、提出用フォーマットに自動で差し込みます。<span class="ver">ver 11/23 12:20</span></p>
   </header>
   <div class="grid">
     <section class="panel" aria-label="操作">
@@ -1819,6 +1819,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
     }
     return { canvas: c, dir, font: fk, color: col, lines };
   }
+  window.__logoImg = () => logoImg;  // 自動処理（compose.py の店のロゴ）用
   window.__setBackText = async (text, o = {}) => {
     if (!text || !String(text).trim()) { logoImg = null; $('useLogo').checked = false; syncOutputs(); schedule(); return null; }
     const fk = BACKFONTS[o.font] ? o.font : null; if (fk) await backFontReady(fk, String(text));

@@ -124,6 +124,8 @@ window.backfillSrc = async ({ max = 50 } = {}) => {
   }
   return res;
 };
+// 裏に必ずロゴを入れる店：[[鍵の文字…], ロゴのパス（tools/resize/ からの相対）]
+const SHOP_BACK_LOGO = [[['ミルドラ', 'MILDROUS'], 'logos/mildrous.png']];
 window.registerToSite = async function (o) {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const b64 = async blob => { const u = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768)); return btoa(s); };
@@ -143,10 +145,21 @@ window.registerToSite = async function (o) {
     for (const [n, v] of Object.entries(o.spec || {})) { const r = d.querySelector(`input[name=${n}][value="${v}"]`); if (!r) throw new Error('仕様なし ' + n + '=' + v); r.click(); await wait(500); }
     for (const id of (o.checks || [])) { const el = d.getElementById(id); if (el && !el.checked) el.click(); await wait(300); }
     if (o.back) { if (!w.__setBackText) throw new Error('提出用ツールが古い（裏の文字なし）'); await w.__setBackText(o.back, o.backOpt || {}); await wait(2500); }
+    // 店のロゴを裏に（2026-11-23 ユーザー指定「ミルドラは必ず裏にロゴ」。tools/resize/shop_rules.py と同じ表）
+    const shopLogo = !o.back && SHOP_BACK_LOGO.find(([ks]) => ks.some(k => (String(o.shop || '') + ' ' + String(o.order || '') + ' ' + String(o.name || '')).toLowerCase().includes(k.toLowerCase())));
+    if (shopLogo) {
+      const lb = await fetch('https://kaeru045.github.io/bottle-label/tools/resize/' + shopLogo[1]).then(r => { if (!r.ok) throw new Error('店のロゴ取得失敗 ' + r.status); return r.blob(); });
+      const dl = new w.DataTransfer(); dl.items.add(new w.File([lb], 'logo.png', { type: 'image/png' }));
+      const li = d.getElementById('fileLogo'); li.files = dl.files; li.dispatchEvent(new w.Event('change', { bubbles: true })); await wait(1500);
+      const img = w.__logoImg && w.__logoImg(); if (!img) throw new Error('店のロゴを入れられませんでした');
+      const set = (id, v) => { const e = d.getElementById(id); e.value = v; e.dispatchEvent(new w.Event('input')); };
+      if (!d.getElementById('useLogo').checked) d.getElementById('useLogo').click();
+      set('size', (Math.min(240, 600 * img.width / img.height) / 1440 * 100).toFixed(1)); set('pos', (585 / 1024 * 100).toFixed(1)); await wait(2500);
+    }
     await wait(2000);
     if (/サンプル表示中/.test(d.body.innerText)) throw new Error('デザイン未反映');
     const submission = await new Promise(r => d.getElementById('out').toBlob(r, 'image/jpeg', 0.92));
-    const dOut = o.back ? await (await fetch('data:image/jpeg;base64,' + w.__designJpeg(0.95))).blob() : design;
+    const dOut = (o.back || shopLogo) ? await (await fetch('data:image/jpeg;base64,' + w.__designJpeg(0.95))).blob() : design;
     const tc = w.__buildTagCanvas && w.__buildTagCanvas(), tk = (d.querySelector('input[name=tag]:checked') || {}).value;
     const tagBlob = tc ? await new Promise(r => tc.toBlob(r, 'image/png')) : null;
     const body = JSON.stringify({ key: o.key, order: o.order, shop: o.shop, name: o.name, template: o.template, due: o.due, asana: o.asana, decolino: o.decolino, memo: ((o.memo || '') + (o.logo && window.__logoNote ? '\n' + window.__logoNote : '')).trim(),

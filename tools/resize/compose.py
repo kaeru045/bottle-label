@@ -16,6 +16,9 @@ from playwright.async_api import async_playwright
 
 ap = argparse.ArgumentParser()
 ap.add_argument('design'); ap.add_argument('--spec', default='{}'); ap.add_argument('--checks', default='[]'); ap.add_argument('--back', default=''); ap.add_argument('--back-opt', default='{}'); ap.add_argument('--out', required=True)
+ap.add_argument('--back-logo', default='', help='裏（ロゴの位置）に入れるロゴ画像（透過PNG）。省略時は shop_rules.py が店名・タスク名から決める（ミルドラ＝MILDROUS のロゴ、2026-11-23）')
+ap.add_argument('--shop', default='', help='店名（shop_rules.py で裏のロゴを決める）')
+ap.add_argument('--no-back-logo', action='store_true', help='店のロゴを入れない')
 ap.add_argument('--task', default='', help='Asanaのタスク {"name":..,"field":仕様欄,"notes":説明}。あれば spec_rules.py でリボン・デコ・タグなどの足りないオプションを足す（2026-11-13）')
 ap.add_argument('--tag-adj', default='', help='タグ内の画像の位置 {"x":左右,"y":上下,"z":大きさ%%}')
 ap.add_argument('--no-fit', action='store_true', help='（互換用・既定で縮めない）')
@@ -28,6 +31,9 @@ if a.task.strip():
     from spec_rules import derive
     _t = json.loads(a.task); spec, checks, why = derive(_t.get('name', ''), _t.get('field', ''), _t.get('notes', ''), spec, checks)
 os.makedirs(a.out, exist_ok=True)
+if not a.back_logo and not a.no_back_logo and not a.back.strip():
+    from shop_rules import back_logo as _bl
+    a.back_logo = _bl(a.shop, json.loads(a.task).get('name', '') if a.task.strip() else '')
 # 名前が正面（横506〜923px）からはみ出していたら、文字のまとまりを縮めて収める。デザイン画像そのもの（と out/design.jpg）を書き換える
 fit = None
 if a.fit and not a.no_fit:
@@ -85,6 +91,16 @@ async def main():
         back = None
         if a.back.strip():
             back = await pg.evaluate("([t, o]) => window.__setBackText(t, o)", [a.back.strip(), json.loads(a.back_opt or '{}')]); await pg.wait_for_timeout(2500)
+        if a.back_logo and not back:  # 店のロゴを裏に（裏の文字と同じ大きさの決まり：幅≦240px・高さ≦600px・中心585px、1440×1024換算）
+            await pg.set_input_files('#fileLogo', a.back_logo); await pg.wait_for_timeout(1500)
+            back = await pg.evaluate("""() => { const img = window.__logoImg && window.__logoImg(); if (!img) return null;
+              const lw = Math.min(240, 600 * img.width / img.height), set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input')); };
+              const u = document.getElementById('useLogo'); if (!u.checked) u.click();
+              set('size', (lw / 1440 * 100).toFixed(1)); set('pos', (585 / 1024 * 100).toFixed(1));
+              return { logo: true, size: +document.getElementById('size').value, w: img.width, h: img.height }; }""")
+            if not back: errs.append('裏のロゴを入れられませんでした')
+            else: back['file'] = os.path.basename(a.back_logo)
+            await pg.wait_for_timeout(2500)
         await pg.wait_for_timeout(2000)
         if 'サンプル表示中' in await pg.inner_text('#badge'):
             sys.exit('デザインが反映されませんでした')
