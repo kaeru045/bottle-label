@@ -77,7 +77,7 @@ def make(a):
 
 def fix(a):
     os.makedirs(a.out, exist_ok=True)
-    it = next((x for x in (api({'action': 'fixes', 'omakase': True}).get('items') or []) if x['id'] == a.id), None)
+    it = next((x for x in (api({'action': 'fixes', 'omakase': True}).get('items') or []) if str(x['id']) == a.id), None)
     if not it: raise SystemExit('修正依頼が見つかりません: ' + a.id)
     sp = json.loads(it.get('spec') or '{}'); cand = str(a.base or sp.get('confirmed', '')).replace('hp-', '')
     if not cand.isdigit():
